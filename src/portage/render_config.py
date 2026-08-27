@@ -84,7 +84,8 @@ def validate_schema(registry: dict, schema: dict) -> list[str]:
 
 def validate_cross_entry(models: list[dict]) -> list[str]:
     """Checks JSON Schema can't express: alias grouping, order uniqueness,
-    duplicate-alias order requirements."""
+    duplicate-alias order requirements, the failover_only/public
+    classification rule (CC-P11), the ollama_chat endpoint requirement."""
     problems = []
     by_alias: dict[str, list[dict]] = {}
     for i, m in enumerate(models):
@@ -92,6 +93,17 @@ def validate_cross_entry(models: list[dict]) -> list[str]:
         if alias not in ALIASES:
             problems.append(
                 f"models[{i}]: alias {alias!r} is not one of the six fixed aliases"
+            )
+        if m.get("failover_only") and m.get("data_classification") != "public":
+            problems.append(
+                f"models[{i}]: alias {alias!r} row {m.get('model_id')!r} sets "
+                "failover_only but is classified "
+                f"{m.get('data_classification')!r}. A failover_only row is only "
+                "legal on a `public`-classified alias (mirrors "
+                "test_off_institution_rows_are_public_only): a failover path on "
+                "a sovereign-classified alias would let LiteLLM's "
+                "retry/fallback route a sovereign-mode request off-institution "
+                "even though config absence is the enforcement (specs/13 §4.3)."
             )
         by_alias.setdefault(alias, []).append(m)
 
