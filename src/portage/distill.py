@@ -126,7 +126,8 @@ def build_routing(project: str) -> list[dict]:
                 "messages": [
                     {
                         "role": "system",
-                        "content": "Route this coding task. Reply with only the target model string.",
+                        "content": "Route this coding task. Reply with only the target "
+                        "model string.",
                     },
                     {"role": "user", "content": t["task"]},
                     {"role": "assistant", "content": t["win_model"]},
@@ -154,8 +155,8 @@ def build_triage(project: str) -> list[dict]:
                 "messages": [
                     {
                         "role": "system",
-                        "content": "Is this task specified well enough to dispatch? Reply SPECIFIED "
-                        "or UNDERSPECIFIED.",
+                        "content": "Is this task specified well enough to dispatch? "
+                        "Reply SPECIFIED or UNDERSPECIFIED.",
                     },
                     {"role": "user", "content": t["task"]},
                     {

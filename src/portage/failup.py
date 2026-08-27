@@ -400,12 +400,13 @@ def run_ladder(
                             "model": model,
                             "effort": effort,
                             "attempt_in_tier": attempt,  # 0-indexed; HB-2 retry cap
-                            # BOTH, not one. `reason` is the legacy string this log has
-                            # carried since before the contract existed and is what keeps
-                            # month-old records meaning what they said. `reason_code` is the
-                            # registry-governed code, verbatim from the verdict document,
-                            # and is what a new consumer should branch on: the registry is
-                            # append-only (SPEC.md §7.2), whereas a free-text reason can be
+                            # BOTH, not one. `reason` is the legacy string this
+                            # log has carried since before the contract existed and
+                            # is what keeps month-old records meaning what they
+                            # said. `reason_code` is the registry-governed code,
+                            # verbatim from the verdict document, and is what a new
+                            # consumer should branch on: the registry is append-only
+                            # (SPEC.md §7.2), whereas a free-text reason can be
                             # reworded invisibly to someone reading last month's logs.
                             "ok": ok,
                             "reason": reason,

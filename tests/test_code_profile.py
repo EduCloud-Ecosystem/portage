@@ -273,7 +273,7 @@ def test_availability_check_stays_upstream_of_the_verifier(failup):
     not have grown an availability mechanism, and failup must not have lost one."""
     assert callable(failup.runner_availability_failure)
     assert "429" in failup.AVAILABILITY_MARKERS
-    source = (SCRIPTS / "code_profile.py").read_text()
+    source = (SCRIPTS / "code_profile.py").read_text(encoding="utf-8")
     for forbidden in ("AVAILABILITY_MARKERS", "unavailable", "429", "rate limit"):
         assert forbidden not in source.split('"""', 2)[2], forbidden
 
