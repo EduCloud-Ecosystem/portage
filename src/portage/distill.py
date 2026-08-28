@@ -45,22 +45,15 @@ from pathlib import Path
 MIN_PER_ROLE = 300  # below this, prompted roles beat a weak adapter
 
 
-def _load_runlog():
-    """The shared run reconstruction (`runlog.py`), loaded by path.
+# runlog.py is loaded by path, not imported — see `_loader.py` for why
+# (single-file `uv run --script` utilities are not package members). Same
+# bootstrap as measure.py and failup.py use.
+_base = Path(__file__).resolve().parent
+_spec = importlib.util.spec_from_file_location("portage_loader", _base / "_loader.py")
+_loader = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_loader)
 
-    distill.py is a single-file `uv run --script` utility rather than a package
-    member, and tests load it by path too, so a plain `import runlog` would
-    resolve only when sys.path happens to contain src/portage. Same idiom, and
-    same reason, as measure.py::_load_runlog() and failup.py::code_profile().
-    """
-    path = Path(__file__).resolve().parent / "runlog.py"
-    spec = importlib.util.spec_from_file_location("portage_runlog", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-runlog = _load_runlog()
+runlog = _loader.load_by_path("portage_runlog", _base / "runlog.py")
 
 
 def state(project: str) -> Path:
@@ -126,7 +119,8 @@ def build_routing(project: str) -> list[dict]:
                 "messages": [
                     {
                         "role": "system",
-                        "content": "Route this coding task. Reply with only the target model string.",
+                        "content": "Route this coding task. Reply with only the target "
+                        "model string.",
                     },
                     {"role": "user", "content": t["task"]},
                     {"role": "assistant", "content": t["win_model"]},
@@ -154,8 +148,8 @@ def build_triage(project: str) -> list[dict]:
                 "messages": [
                     {
                         "role": "system",
-                        "content": "Is this task specified well enough to dispatch? Reply SPECIFIED "
-                        "or UNDERSPECIFIED.",
+                        "content": "Is this task specified well enough to dispatch? "
+                        "Reply SPECIFIED or UNDERSPECIFIED.",
                     },
                     {"role": "user", "content": t["task"]},
                     {

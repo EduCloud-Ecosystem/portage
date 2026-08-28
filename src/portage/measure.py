@@ -35,50 +35,21 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 
+# Sibling modules are loaded by path, not imported — see `_loader.py` for why
+# (single-file `uv run --script` utilities are not package members, and tests
+# load them by path too). `_loader` itself must be bootstrapped by path for the
+# same reason; that one bootstrap replaces the per-module loader functions this
+# file used to hand-roll.
+_base = Path(__file__).resolve().parent
+_spec = importlib.util.spec_from_file_location("portage_loader", _base / "_loader.py")
+_loader = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_loader)
 
-def _load_failure_classes():
-    """`failure_classes.py`, loaded by path — same idiom as `_load_runlog()`
-    below, same reason."""
-    path = Path(__file__).resolve().parent / "failure_classes.py"
-    spec = importlib.util.spec_from_file_location("portage_failure_classes", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-failure_classes = _load_failure_classes()
-
-
-def _load_tier_pricing():
-    """`tier_pricing.py`, loaded by path — same idiom as `_load_runlog()`."""
-    path = Path(__file__).resolve().parent / "tier_pricing.py"
-    spec = importlib.util.spec_from_file_location("portage_tier_pricing", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-tier_pricing = _load_tier_pricing()
-
-
-def _load_runlog():
-    """The shared run reconstruction (`runlog.py`), loaded by path.
-
-    measure.py is a single-file `uv run --script` utility rather than a package
-    member, and tests load it by path too, so a plain `import runlog` would
-    resolve only when sys.path happens to contain src/portage. Loading by path
-    works in both modes and adds no dependency — runlog.py is stdlib-only, like
-    everything else in this repo's core. Same idiom, and same reason, as
-    failup.py::code_profile().
-    """
-    path = Path(__file__).resolve().parent / "runlog.py"
-    spec = importlib.util.spec_from_file_location("portage_runlog", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-runlog = _load_runlog()
+failure_classes = _loader.load_by_path(
+    "portage_failure_classes", _base / "failure_classes.py"
+)
+tier_pricing = _loader.load_by_path("portage_tier_pricing", _base / "tier_pricing.py")
+runlog = _loader.load_by_path("portage_runlog", _base / "runlog.py")
 
 
 def _load_price_table(project: str) -> dict:

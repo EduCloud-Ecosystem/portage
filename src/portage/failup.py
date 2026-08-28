@@ -190,41 +190,23 @@ _LEGACY_REASON = {
     "code.tests_failed": "tests-failed",
 }
 
-_CODE_PROFILE = None
-_FAILURE_CLASSES = None
+# Sibling modules are loaded by path, not imported — see `_loader.py` for why
+# (single-file `uv run --script` utilities are not package members). The shared
+# loader's own cache replaces the globals these two functions used to keep.
+_base = Path(__file__).resolve().parent
+_spec = importlib.util.spec_from_file_location("portage_loader", _base / "_loader.py")
+_loader = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_loader)
 
 
 def failure_classes():
-    """The five-class taxonomy module, loaded by path — same idiom as
-    `code_profile()` above, same reason (single-file `uv run --script` tool,
-    not a package member)."""
-    global _FAILURE_CLASSES
-    if _FAILURE_CLASSES is None:
-        path = Path(__file__).resolve().parent / "failure_classes.py"
-        spec = importlib.util.spec_from_file_location("portage_failure_classes", path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        _FAILURE_CLASSES = module
-    return _FAILURE_CLASSES
+    """The five-class taxonomy module, loaded by path (`_loader.py`)."""
+    return _loader.load_by_path("portage_failure_classes", _base / "failure_classes.py")
 
 
 def code_profile():
-    """The sibling `code` profile module, loaded by path.
-
-    failup.py is a single-file `uv run --script` utility rather than a package
-    member — tests load it by path too (tests/conftest.py) — so a plain
-    `import code_profile` would resolve only when sys.path happens to contain
-    src/portage. Loading by path works in both modes and adds no dependency:
-    code_profile.py is stdlib-only, like everything else in this repo's core.
-    """
-    global _CODE_PROFILE
-    if _CODE_PROFILE is None:
-        path = Path(__file__).resolve().parent / "code_profile.py"
-        spec = importlib.util.spec_from_file_location("portage_code_profile", path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        _CODE_PROFILE = module
-    return _CODE_PROFILE
+    """The sibling `code` profile module, loaded by path (`_loader.py`)."""
+    return _loader.load_by_path("portage_code_profile", _base / "code_profile.py")
 
 
 def code_verdict(project: str, gate_cmds=None) -> dict:
@@ -400,12 +382,13 @@ def run_ladder(
                             "model": model,
                             "effort": effort,
                             "attempt_in_tier": attempt,  # 0-indexed; HB-2 retry cap
-                            # BOTH, not one. `reason` is the legacy string this log has
-                            # carried since before the contract existed and is what keeps
-                            # month-old records meaning what they said. `reason_code` is the
-                            # registry-governed code, verbatim from the verdict document,
-                            # and is what a new consumer should branch on: the registry is
-                            # append-only (SPEC.md §7.2), whereas a free-text reason can be
+                            # BOTH, not one. `reason` is the legacy string this
+                            # log has carried since before the contract existed and
+                            # is what keeps month-old records meaning what they
+                            # said. `reason_code` is the registry-governed code,
+                            # verbatim from the verdict document, and is what a new
+                            # consumer should branch on: the registry is append-only
+                            # (SPEC.md §7.2), whereas a free-text reason can be
                             # reworded invisibly to someone reading last month's logs.
                             "ok": ok,
                             "reason": reason,
