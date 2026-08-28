@@ -302,6 +302,15 @@ def summarize(project: str, since, until) -> dict:
         for t in solvable_from_start
     }
 
+    # CC-P12: the escalation premium. Over the SAME admissible + escalated
+    # population as `escalated` above (no second filter), sum the cost of every
+    # attempt after the first — the number that answers "what did escalating
+    # actually cost us" (specs/13 §4.1: a model switch forfeits the prefix
+    # cache). Availability attempts in the tail are skipped exactly as the
+    # pricing loop above skips them; an unpriceable attempt is counted by its
+    # basis in `escalation_unknown_by_basis`, never silently dropped.
+    escalation_cost = 0.0
+    escalation_unknown = defaultdict(int)
     for r in admissible:
         if r["stalled"]:
             stalled += 1
@@ -312,6 +321,21 @@ def summarize(project: str, since, until) -> dict:
             floor_pass += 1
         if len(r["attempts"]) > 1 and top > r["start_tier"]:
             escalated += 1
+            for a in r["attempts"][1:]:
+                if runlog.attempt_category(a) == runlog.CAT_AVAILABILITY:
+                    continue
+                price, basis = tier_pricing.price_for_rung(
+                    a["model"],
+                    cost_usd=a.get("cost_usd"),
+                    tokens_in=a.get("tokens_in"),
+                    tokens_out=a.get("tokens_out"),
+                    cache_read_tokens=a.get("cache_read_tokens"),
+                    price_table=price_table,
+                )
+                if price is None:
+                    escalation_unknown[basis] += 1
+                else:
+                    escalation_cost += price
 
     usage = [
         u
@@ -346,6 +370,8 @@ def summarize(project: str, since, until) -> dict:
         },
         "cost_by_tier_usd": {t: round(c, 4) for t, c in sorted(cost_by_tier.items())},
         "cost_unknown_by_basis": dict(sorted(cost_unknown.items())),
+        "escalation_cost_usd": round(escalation_cost, 4),
+        "escalation_unknown_by_basis": dict(sorted(escalation_unknown.items())),
         "success_per_dollar_by_tier": dict(sorted(success_per_dollar.items())),
         "cna_by_tier": dict(sorted(cna_by_tier.items())),
     }
@@ -379,6 +405,8 @@ def _fmt(label, s: dict) -> str:
         "(of attempts that reached the tier, share that passed)",
         f"  per-class failures: {s['per_class_failures']}   (HB-2 five-class priors)",
         f"  $ by tier:          {s['cost_by_tier_usd']}   (HB-2b, admissible attempts)",
+        f"  escalation cost:    {s['escalation_cost_usd']}   (CC-P12: post-first "
+        "attempts of escalated runs — the re-prefill price of escalating)",
         f"  success/$ by tier:  {s['success_per_dollar_by_tier']}   "
         "(cost-efficiency, not CNA — see measure.py's module note)",
         f"  CNA by tier:        {s['cna_by_tier']}   "
@@ -388,6 +416,11 @@ def _fmt(label, s: dict) -> str:
         lines.append(
             f"  cost unknown for:   {s['cost_unknown_by_basis']}   "
             "(NOT dropped from the run counts above, just unpriced)"
+        )
+    if s["escalation_unknown_by_basis"]:
+        lines.append(
+            f"  escalation unknown: {s['escalation_unknown_by_basis']}   "
+            "(escalation attempts not priced — NOT dropped)"
         )
     if q:
         lines += [

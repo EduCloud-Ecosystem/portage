@@ -177,9 +177,9 @@ class TestSovereignConfigCannotExpressTheViolation:
         # out of scope here; the guard is that this rule adds nothing to it.)
         for path in (STUDENT, STAFF):
             problems = render_config.validate_cross_entry(_models(path))
-            assert all("failover_only" not in p for p in problems), (
-                f"{path.name} trips the failover_only/public rule: {problems}"
-            )
+            assert all(
+                "failover_only" not in p for p in problems
+            ), f"{path.name} trips the failover_only/public rule: {problems}"
         assert render_config.validate_cross_entry(_models(STUDENT)) == []
 
     def test_router_settings_cannot_recreate_the_path(self, render_config, schema):
