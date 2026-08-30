@@ -349,3 +349,162 @@ def test_a_missing_tiers_file_falls_back_to_models_not_aliases(failup, tmp_path)
     # no route by which a fable_tier row becomes reachable from this module.
     tiers = failup.load_tiers(str(tmp_path), "does-not-exist.json")
     assert {t["model"] for t in tiers} & REGISTRY_ALIASES == set()
+
+
+# ----------------------------------------- CC-P13: classification-informed entry
+
+
+def test_entry_tier_failure_still_escalates_like_floor(
+    failup, git_repo, tmp_path, monkeypatch
+):
+    """THE CC-P13 CONSTRAINT, tested before the feature: entering the ladder at
+    a classifier-chosen tier must not reduce verification.
+
+    "Classifier picked tier 2, but only tier 3 actually passes": the entry
+    tier still fails the deterministic gate TWICE (MAX_ATTEMPTS_PER_TIER),
+    still logs capability verdicts, and still escalates to the true-answer
+    tier — verified, not stalled. A floor start reaches the SAME model with
+    the same retry-then-escalate machinery; only the tiers tried below differ.
+    """
+    monkeypatch.setenv("STUB_COUNTER_FILE", str(tmp_path / ".stub-counter"))
+    # tiers file OUTSIDE the repo: `git stash push -u` in run A's recovery would
+    # sweep an untracked tiers.json inside it away before run B loads it.
+    tiers = _tiers(tmp_path, ["r0", "r1", "r2", "r3"])
+
+    # Entry at tier 2. The gate must run there: capability, capability, then ok
+    # at tier 3. If entry selection ever trusted the entry tier's output without
+    # the gate, this run would return clean at tier 2 and this test fails.
+    monkeypatch.setenv("STUB_PLAN", "capability,capability,ok")
+    rc = failup.run_ladder(
+        "do the thing",
+        str(git_repo),
+        str(tiers),
+        STUB_RUNNER,
+        start_tier=2,
+        gate_cmds=(NOOP_LINT, CHECK_MARKER),
+    )
+    assert rc == 0
+    entries = _log_entries(git_repo)
+    assert [e["tier"] for e in entries] == [2, 2, 3]
+    assert [e["attempt_in_tier"] for e in entries] == [0, 1, 0]
+    assert [e["ok"] for e in entries] == [False, False, True]
+    assert [e["category"] for e in entries] == ["capability", "capability", "ok"]
+
+    # Same eventual outcome from the floor: tiers 0-2 each fail twice, the run
+    # still ends verified at r3. Entry choice changes WHICH tiers were tried,
+    # never whether verification decides.
+    (git_repo / ".claude" / "state" / "failup-log.jsonl").unlink()
+    (tmp_path / ".stub-counter").unlink()  # fresh plan consumption for run 2
+    monkeypatch.setenv(
+        "STUB_PLAN",
+        "capability,capability,capability,capability,capability,capability,ok",
+    )
+    rc = failup.run_ladder(
+        "do the thing",
+        str(git_repo),
+        str(tiers),
+        STUB_RUNNER,
+        start_tier=0,
+        gate_cmds=(NOOP_LINT, CHECK_MARKER),
+    )
+    assert rc == 0
+    entries = _log_entries(git_repo)
+    assert [e["tier"] for e in entries] == [0, 0, 1, 1, 2, 2, 3]
+    assert [e["ok"] for e in entries] == [False, False, False, False, False, False, True]
+
+
+class TestSelectEntryTier:
+    """The CC-P13 selector itself: chooses WHERE the ladder starts, never what
+    happens after. Every failure mode degrades to the floor (start_tier=0)."""
+
+    TIERS = [{"model": "r0", "effort": None}, {"model": "r1", "effort": None}]
+
+    def test_small_task_starts_at_the_floor(self, failup):
+        assert failup.select_entry_tier("fix the typo in marker.txt", self.TIERS) == 0
+
+    def test_long_context_marker_skips_the_floor(self, failup):
+        assert failup.select_entry_tier("refactor the entire codebase", self.TIERS) == 1
+
+    def test_very_long_task_skips_the_floor(self, failup):
+        task = "x" * (failup.ENTRY_RUNG_LONG_TASK_CHARS + 1)
+        assert failup.select_entry_tier(task, self.TIERS) == 1
+
+    def test_never_skips_the_floor_with_a_single_tier(self, failup):
+        tiers = [{"model": "r0", "effort": None}]
+        assert failup.select_entry_tier("refactor the entire codebase", tiers) == 0
+
+    def test_empty_task_starts_at_the_floor(self, failup):
+        assert failup.select_entry_tier("", self.TIERS) == 0
+
+    def test_classifier_pick_is_honoured_when_valid(self, failup):
+        tiers = self.TIERS + [{"model": "r2", "effort": None}]
+        assert failup.select_entry_tier("x", tiers, classifier=lambda t: 2) == 2
+
+    def test_classifier_failure_falls_back_to_the_floor(self, failup):
+        def boom(task):
+            raise RuntimeError("classifier unreachable")
+
+        assert failup.select_entry_tier("x", self.TIERS, classifier=boom) == 0
+        # malformed or out-of-range output is a failure, not a guess
+        assert failup.select_entry_tier("x", self.TIERS, classifier=lambda t: "two") == 0
+        assert failup.select_entry_tier("x", self.TIERS, classifier=lambda t: 99) == 0
+        assert failup.select_entry_tier("x", self.TIERS, classifier=lambda t: -1) == 0
+
+
+class TestMainStartTierWiring:
+    """The selector is the DEFAULT start_tier for the CLI; an explicit
+    `--start-tier` still wins (plan.py's invocation path is untouched)."""
+
+    def test_default_start_tier_is_the_classifier_selection(
+        self, failup, tmp_path, monkeypatch
+    ):
+        captured = {}
+
+        def fake_run_ladder(task, project, tiers_file, runner, **kw):
+            captured["start_tier"] = kw.get("start_tier", 0)
+            return 0
+
+        monkeypatch.setattr(failup, "run_ladder", fake_run_ladder)
+        monkeypatch.setattr("sys.exit", lambda code=None: None)
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "failup.py",
+                "--task",
+                "refactor the entire codebase",
+                "--project",
+                str(tmp_path),
+                "--tiers",
+                "missing.json",  # -> load_tiers falls back to ["sonnet", "opus"]
+            ],
+        )
+        failup.main()
+        assert captured["start_tier"] == 1
+
+    def test_explicit_start_tier_override_is_preserved(
+        self, failup, tmp_path, monkeypatch
+    ):
+        captured = {}
+
+        def fake_run_ladder(task, project, tiers_file, runner, **kw):
+            captured["start_tier"] = kw.get("start_tier", 0)
+            return 0
+
+        monkeypatch.setattr(failup, "run_ladder", fake_run_ladder)
+        monkeypatch.setattr("sys.exit", lambda code=None: None)
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "failup.py",
+                "--task",
+                "refactor the entire codebase",
+                "--project",
+                str(tmp_path),
+                "--tiers",
+                "missing.json",
+                "--start-tier",
+                "0",
+            ],
+        )
+        failup.main()
+        assert captured["start_tier"] == 0

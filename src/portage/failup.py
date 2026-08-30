@@ -288,6 +288,66 @@ def _retry_feedback(task: str, category: str, verdict: dict | None) -> str:
     )
 
 
+# ── CC-P13: classification-informed ENTRY rung ───────────────────────────────
+# specs/13 §4.2: classification decides WHERE TO START; verification still
+# decides WHETHER IT WORKED. This function picks run_ladder()'s start_tier;
+# the ladder below it is unchanged, so a wrong guess costs one failed attempt
+# and escalates — it never reduces verification (the CC-P13 constraint, tested
+# in test_failup.py::test_entry_tier_failure_still_escalates_like_floor).
+#
+# The T1 classifier (Gemma 4 E4B, the `classifier` alias in the registry) has
+# NO call site in this engine: triage is heuristic by design (see this
+# module's docstring — "you don't need a sophisticated classifier... the guard
+# catches the misses"). The default path below is therefore a conservative
+# task-size heuristic, and `classifier=` is the documented drop-in point for a
+# model-based classifier. Failure discipline mirrors
+# runner_availability_failure(): an unreachable or malformed classifier, or
+# any exception, falls back to start_tier=0 — never a crash, never a
+# verification skip.
+ENTRY_RUNG_LONG_TASK_CHARS = 4000
+ENTRY_RUNG_LONG_CONTEXT_MARKERS = (
+    "entire codebase",
+    "long-context",
+    "whole repository",
+    "migration across",
+)
+
+
+def select_entry_tier(
+    task: str,
+    tiers: list[dict],
+    *,
+    classifier=None,
+) -> int:
+    """The entry rung index for `task` into the loaded `tiers` list.
+
+    Only ever picks WHERE the ladder starts; it cannot change what happens
+    after (retry-then-escalate, deterministic gate). Every failure mode —
+    classifier raising, malformed output, an out-of-range pick — degrades to
+    the floor (0), the same "unavailable, not evidence about capability"
+    posture as runner_availability_failure().
+    """
+    if classifier is not None:
+        try:
+            pick = classifier(task)
+        except Exception:
+            return 0
+        if isinstance(pick, int) and 0 <= pick < len(tiers):
+            return pick
+        return 0
+    try:
+        if len(tiers) <= 1:
+            return 0
+        text = task or ""
+        if len(text) > ENTRY_RUNG_LONG_TASK_CHARS:
+            return min(1, len(tiers) - 1)
+        if any(m in text.lower() for m in ENTRY_RUNG_LONG_CONTEXT_MARKERS):
+            return min(1, len(tiers) - 1)
+        return 0
+    except Exception:
+        return 0
+
+
 def run_ladder(
     task: str,
     project: str,
@@ -464,7 +524,14 @@ def run_ladder(
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", required=True, help="prompt for the automated run")
-    ap.add_argument("--start-tier", type=int, default=0)
+    ap.add_argument(
+        "--start-tier",
+        type=int,
+        default=None,
+        help="entry rung index. Default: select_entry_tier() — a conservative "
+        "task-size heuristic, or a classifier if one is wired. Explicit "
+        "--start-tier 0 forces the floor (the pre-CC-P13 behavior).",
+    )
     ap.add_argument("--project", default=os.getcwd())
     ap.add_argument(
         "--tiers",
@@ -489,6 +556,12 @@ def main():
         "rather than spend scarce Opus quota.",
     )
     args = ap.parse_args()
+    if args.start_tier is None:
+        # CC-P13: classification-informed entry is the DEFAULT; an explicit
+        # --start-tier (plan.py's CLI path included) still wins unchanged.
+        args.start_tier = select_entry_tier(
+            args.task, load_tiers(args.project, args.tiers)
+        )
     sys.exit(
         run_ladder(
             args.task,
