@@ -218,6 +218,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def reply(self, status, body):
         data = json.dumps(body).encode()
+        self.response_started = True
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
@@ -303,6 +304,7 @@ class Handler(BaseHTTPRequestHandler):
     def handle_request(self):
         admitted = None
         self.admitted = None
+        self.response_started = False
         streaming = False
         try:
             if self.path == "/health" and self.command == "GET":
@@ -365,6 +367,7 @@ class Handler(BaseHTTPRequestHandler):
             ) as upstream:
                 if body.get("stream"):
                     streaming = True
+                    self.response_started = True
                     self.send_response(200)
                     self.send_header("Content-Type", "text/event-stream")
                     self.send_header("Cache-Control", "no-store")
@@ -403,7 +406,13 @@ class Handler(BaseHTTPRequestHandler):
                     self.reply(200, result)
             self.server.ledger.settle(admitted, usage)
         except (BrokenPipeError, ConnectionResetError):
-            pass
+            # RemoteDisconnected also inherits ConnectionResetError. Before
+            # response headers this may be the engine, not the caller.
+            if not self.response_started:
+                try:
+                    self.reply(503, {"error": {"code": "inference_unavailable"}})
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
         except Denied as exc:
             if not streaming:
                 self.reply(exc.status, {"error": {"code": exc.code, "message": exc.code}})
