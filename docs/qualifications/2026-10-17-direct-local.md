@@ -14,10 +14,13 @@ neither deployment nor a default-route change.
 - Work tracking: [Portage #9](https://github.com/EduCloud-Ecosystem/portage/issues/9).
 - Prerequisite review: [Portage #10](https://github.com/EduCloud-Ecosystem/portage/pull/10),
   draft; deterministic CI passed, paid model reviewer skipped.
+- Qualification review: [Portage #11](https://github.com/EduCloud-Ecosystem/portage/pull/11),
+  stacked draft; [Linux synthetic CI passed](https://github.com/EduCloud-Ecosystem/portage/actions/runs/39075295809)
+  at `1f9197c`. The CI record preserves actual runtime criteria as NOT RUN.
 
 Only the isolated Portage worktree changed. The original Portage checkout is
 still clean on `codex/ai-pilot` at `9e2a877`. Belay, portage-local, Waypoint,
-Outfitter and PAIR were not modified. No engine/service was started or restarted,
+Outfitter and PAIR were not modified. No existing service or real inference engine was started or restarted,
 weights downloaded, subscription purchased, capacity provisioned or real data used.
 
 ## Capacity and model identity
