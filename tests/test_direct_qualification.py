@@ -469,6 +469,7 @@ def live_config(endpoint):
         "resource_limit_evidence": "synthetic test only",
         "engine_version": "fixture",
         "license_review": "synthetic test only",
+        "ledger_path": "/nonexistent/synthetic-test-only.sqlite",
         "local_only": True,
         "egress_blocked": True,
         "existing_installed_model": True,
@@ -480,6 +481,7 @@ def live_config(endpoint):
 def test_live_protocol_against_synthetic_engine_only(env, runner, monkeypatch, tmp_path):
     """Exercises runner instrumentation; this is NOT a real-capacity acceptance."""
     config = live_config(env.service.manifest["models"]["code_small"]["endpoint"])
+    config["approved_capacity"]["ledger_path"] = str(tmp_path / "approved-ledger.sqlite")
     env.engine.mode = "qualified"
     monkeypatch.setattr(runner, "pin_engine", lambda _: {"evidence": "synthetic"})
     monkeypatch.setattr(
@@ -512,6 +514,7 @@ def test_live_protocol_against_synthetic_engine_only(env, runner, monkeypatch, t
 
 def test_live_protocol_stops_after_ambiguous_usage(env, runner, monkeypatch, tmp_path):
     config = live_config(env.service.manifest["models"]["code_small"]["endpoint"])
+    config["approved_capacity"]["ledger_path"] = str(tmp_path / "approved-ledger.sqlite")
     env.engine.mode = "missing"
     monkeypatch.setattr(runner, "pin_engine", lambda _: {"evidence": "synthetic"})
     output = tmp_path / "runner"
@@ -521,6 +524,14 @@ def test_live_protocol_stops_after_ambiguous_usage(env, runner, monkeypatch, tmp
     assert len(env.engine.calls) == 1
     assert report["runtime"]["attempt_accounting"] == "FAIL"
     assert report["usage"]["unresolved"] == 1
+    # A fresh evidence directory is not permission to reset admission state.
+    retry = tmp_path / "retry"
+    retry.mkdir()
+    with pytest.raises(ValueError, match="reconcile previous"):
+        runner.live(
+            config, retry, {"runtime": dict.fromkeys(runner.LIVE_GATES, "NOT RUN")}
+        )
+    assert len(env.engine.calls) == 1
 
 
 @pytest.mark.parametrize("change", ["no_approval", "synthetic", "deadline", "budget"])

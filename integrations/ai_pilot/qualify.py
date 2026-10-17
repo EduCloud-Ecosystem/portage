@@ -128,9 +128,12 @@ def validate_live(config):
         "resource_limit_evidence",
         "engine_version",
         "license_review",
+        "ledger_path",
     ):
         if not isinstance(capacity.get(field), str) or not capacity[field].strip():
             raise ValueError(f"complete approved_capacity.{field}")
+    if not Path(capacity["ledger_path"]).is_absolute():
+        raise ValueError("approved capacity needs an absolute durable local ledger path")
     for field in ("local_only", "egress_blocked", "existing_installed_model"):
         if capacity.get(field) is not True:
             raise ValueError(f"capacity must attest {field}")
@@ -279,9 +282,12 @@ def live(config, output, report):
     # Pin checks are metadata-only. They do not load or download a model.
     report["observed_model"] = pin_engine(config)
     report["runtime"]["model_identity"] = "PASS"
-    ledger = gateway.Ledger(output / "ledger.sqlite")
+    # Separate evidence directories must not reset the approved run's liability.
+    ledger = gateway.Ledger(config["approved_capacity"]["ledger_path"])
     project = config["project"]
     ledger.project(project, config["project_allowance"], 2)
+    if ledger.usage(project)["active"]:
+        raise ValueError("reconcile previous pending/unknown work before further runs")
     ledger.member(project, "qualifier01", config["participant_allowance"], 2)
     token = ledger.issue(project, subject="qualifier01", lifetime=1800)
     authority = ThreadingHTTPServer(("127.0.0.1", 0), SyntheticAuthority)

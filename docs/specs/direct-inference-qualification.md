@@ -73,6 +73,7 @@ capabilities. Maximum accepted bounds are 128 output tokens, 4,096 per request,
 | Context | Approved effective context, checked against `GET /api/ps` during the run |
 | Token bounds | Fixed output limit and conservative byte-plus-framing reservation; tokenizer proof is a separate gate |
 | CPU/memory | Actual process/container limits and observation procedure; gateway metadata does not enforce engine resources |
+| Ledger | Absolute path on local disk outside per-run evidence directories; reuse across retries/runs |
 | Local-only/egress | Evidence of disabled cloud routing and blocked external egress; loopback alone does not prove locality |
 | Absolute expiry | Timezone-aware deadline within 30 minutes, allowing time for synthetic controls first |
 
@@ -112,7 +113,8 @@ disconnect does not prove engine termination; its budget and slot remain held.
 
 `attempts.json` links request/ledger identity, latency, streaming first-content
 time, availability, exact-output quality and output hash. The private SQLite
-ledger retains liabilities. Random, short-lived credentials are stored hashed
+ledger retains liabilities across runs, even with a new evidence directory.
+Pending/unknown work blocks a further run before dispatch. Random credentials are hashed
 and disabled on normal exit. `record.json` gives nearest-rank p50/p95 over
 successful calls with denominators. This tiny workload tests instrumentation,
 not an SLA or research competence. Inspect per-cell rows: two admitted clients
@@ -145,7 +147,7 @@ research-task quality are outside this selected path.
    measured usage and SHA256 of retained evidence. The digest is provenance,
    not proof of correctness. If usage is unknowable, keep it unresolved.
 6. Recheck model pins, context and limits before further approved work. Carry
-   unresolved liabilities forward; this fresh-run harness cannot resume an
+   unresolved liabilities forward in the same ledger; this harness cannot resume an
    ambiguous run. Record restart acceptance separately.
 
 ## Capacity decision and institutional gates

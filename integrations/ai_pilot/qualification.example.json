@@ -29,6 +29,7 @@
     "resource_limit_evidence": null,
     "engine_version": null,
     "license_review": null,
+    "ledger_path": null,
     "local_only": false,
     "egress_blocked": false,
     "existing_installed_model": false,
