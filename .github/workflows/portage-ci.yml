@@ -54,6 +54,9 @@ jobs:
   # ---- Automated review: only runs if the gate is green. ----
   review:
     needs: gate
+    # Drafts are reviewable without invoking a paid model. Human promotion is
+    # separate from the deterministic, model-free test gate.
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
