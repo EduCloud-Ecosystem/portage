@@ -7,13 +7,19 @@ Run on a private container network. Only Waypoint exposes /v1 to clients;
 
 from __future__ import annotations
 
+import http.client
+import ipaddress
 import json
 import math
 import os
 import secrets
+import socket
 import sys
+import threading
+import time
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -22,20 +28,83 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src" / "portage"))
 from pilot_ledger import Denied, Ledger, prepare_request  # noqa: E402
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(req.full_url, code, "redirect refused", headers, fp)
+
+
+def open_once(request, timeout):
+    # Neither environment proxies nor redirects may change the approved destination.
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), NoRedirect()
+    ).open(request, timeout=timeout)
+
+
+@contextmanager
+def inference_attempt(request, timeout):
+    """One destination, no retry, absolute response deadline including connect."""
+    deadline = time.monotonic() + timeout
+    endpoint = urlsplit(request.full_url)
+    connection_type = (
+        http.client.HTTPSConnection
+        if endpoint.scheme == "https"
+        else http.client.HTTPConnection
+    )
+    connection = connection_type(endpoint.hostname, endpoint.port, timeout=timeout)
+    timer = None
+    try:
+        connection.connect()
+        transport = connection.sock
+
+        def interrupt():
+            try:
+                transport.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+
+        timer = threading.Timer(max(0, deadline - time.monotonic()), interrupt)
+        timer.daemon = True
+        timer.start()
+        connection.request(
+            request.get_method(),
+            request.selector,
+            body=request.data,
+            headers=dict(request.header_items()),
+        )
+        with connection.getresponse() as response:
+            if not 200 <= response.status < 300:
+                raise urllib.error.HTTPError(
+                    request.full_url,
+                    response.status,
+                    "upstream refused",
+                    response.headers,
+                    None,
+                )
+            yield response
+    finally:
+        if timer:
+            timer.cancel()
+        connection.close()
+
+
 def validate_manifest(manifest, mode):
-    if mode not in {"synthetic", "hosted"} or manifest.get("mode") != mode:
+    if (
+        mode not in {"synthetic", "hosted", "qualification"}
+        or manifest.get("mode") != mode
+    ):
         raise ValueError("deployment mode mismatch")
     for field in ("project_allowance", "participant_allowance", "concurrency"):
         if type(manifest.get(field)) is not int or manifest[field] <= 0:
             raise ValueError(f"finite {field} required")
     models = manifest.get("models", {})
-    if set(models) != {
+    required = {
         "classifier",
         "code_small",
         "code_large",
         "research_synthesis",
         "embedding",
-    }:
+    }
+    if set(models) != ({"code_small"} if mode == "qualification" else required):
         raise ValueError("all capability aliases must be declared")
     for alias, model in models.items():
         for field in ("revision", "provenance", "endpoint", "resource_limits"):
@@ -68,6 +137,27 @@ def validate_manifest(manifest, mode):
             "embeddings" if alias == "embedding" else "chat/completions"
         ):
             raise ValueError("invalid capability operation")
+        if mode == "qualification":
+            # An opt-in, single-engine test path, never a hosted deployment mode.
+            if (
+                not ipaddress.ip_address(endpoint.hostname).is_loopback
+                or endpoint.scheme != "http"
+                or endpoint.path not in {"", "/"}
+            ):
+                raise ValueError("qualification requires a literal loopback origin")
+            for field in ("upstream_model", "quantization", "template_sha256"):
+                if not isinstance(model.get(field), str) or not model[field].strip():
+                    raise ValueError(f"{alias}: missing {field}")
+            if (
+                type(model.get("context_tokens")) is not int
+                or model["context_tokens"] < model["max_request_tokens"]
+            ):
+                raise ValueError("qualification context must cover request reservation")
+            if (
+                type(model.get("request_timeout_seconds")) not in {int, float}
+                or not 0 < model["request_timeout_seconds"] <= 120
+            ):
+                raise ValueError("qualification requires a deadline up to 120 seconds")
         if mode == "hosted":
             evidence = model.get("qualification", {})
             if model.get("synthetic") or not all(
@@ -132,6 +222,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
+        if getattr(self, "admitted", None):
+            self.send_header("X-Portage-Request-Id", self.admitted)
         self.end_headers()
         self.wfile.write(data)
 
@@ -160,7 +252,7 @@ class Handler(BaseHTTPRequestHandler):
             url, headers={"Authorization": "Bearer " + self.server.authority_key}
         )
         try:
-            with urllib.request.urlopen(req, timeout=10) as result:
+            with open_once(req, timeout=10) as result:
                 current = json.load(result)
         except urllib.error.HTTPError as exc:
             if exc.code in {401, 403, 404}:
@@ -210,6 +302,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def handle_request(self):
         admitted = None
+        self.admitted = None
         streaming = False
         try:
             if self.path == "/health" and self.command == "GET":
@@ -248,37 +341,62 @@ class Handler(BaseHTTPRequestHandler):
             body, reserved = prepare_request(
                 self.body(), self.server.manifest["models"], self.path[4:]
             )
+            # Body receipt may block. Recheck the current authority immediately
+            # before admission; the ledger then rechecks local revocation atomically.
+            token, asserted, project, member = self.identity()
             admitted = self.server.ledger.admit(token, body["model"], reserved, asserted)
+            self.admitted = admitted
             spec = self.server.manifest["models"][body["model"]]
+            if self.server.manifest["mode"] == "qualification":
+                body["model"] = spec["upstream_model"]
             request = urllib.request.Request(
                 spec["endpoint"].rstrip("/") + self.path,
                 data=json.dumps(body).encode(),
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": "Bearer " + self.server.inference_key,
+                    "X-Portage-Request-Id": admitted,
                 },
             )
             usage = None
             # One HTTP attempt only; every application retry is a new admission.
-            with urllib.request.urlopen(request, timeout=120) as upstream:
+            with inference_attempt(
+                request, timeout=spec.get("request_timeout_seconds", 120)
+            ) as upstream:
                 if body.get("stream"):
                     streaming = True
                     self.send_response(200)
                     self.send_header("Content-Type", "text/event-stream")
                     self.send_header("Cache-Control", "no-store")
                     self.send_header("Connection", "close")
+                    self.send_header("X-Portage-Request-Id", admitted)
                     self.end_headers()
                     self.close_connection = True
-                    for line in upstream:
-                        if line.startswith(b"data: ") and line.strip() != b"data: [DONE]":
+                    done = False
+                    while line := upstream.readline(262145):
+                        if len(line) > 262144:
+                            raise ValueError("upstream event too large")
+                        if line.strip() == b"data: [DONE]":
+                            done = True
+                        elif line.startswith(b"data: "):
                             chunk = json.loads(line[6:])
+                            if chunk.get("error"):
+                                raise ValueError("upstream stream failed")
                             if chunk.get("usage"):
                                 usage = chunk["usage"].get("total_tokens")
                         self.wfile.write(line)
                         self.wfile.flush()
+                        if done:
+                            break
+                    if not done:
+                        usage = None
                 else:
                     result = json.load(upstream)
-                    usage = (result.get("usage") or {}).get("total_tokens")
+                    usage = (
+                        (result.get("usage") or {}).get("total_tokens")
+                        if not result.get("error")
+                        else None
+                    )
                     # Commit reported usage before acknowledging completion;
                     # an immediate usage read must observe the completed call.
                     self.server.ledger.settle(admitted, usage)
@@ -308,7 +426,7 @@ if __name__ == "__main__":
         manifest["project"], manifest["project_allowance"], manifest["concurrency"]
     )
     Gateway(
-        ("0.0.0.0", 8090),
+        ("127.0.0.1" if manifest["mode"] == "qualification" else "0.0.0.0", 8090),
         ledger,
         manifest,
         os.environ["PILOT_CONTROL_KEY"],

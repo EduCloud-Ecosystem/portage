@@ -1,0 +1,37 @@
+{
+  "mode": "qualification",
+  "project": "qualify01",
+  "project_allowance": 32768,
+  "participant_allowance": 32768,
+  "concurrency": 2,
+  "models": {
+    "code_small": {
+      "operation": "chat/completions",
+      "endpoint": "http://127.0.0.1:11434",
+      "upstream_model": null,
+      "revision": null,
+      "template_sha256": null,
+      "quantization": null,
+      "context_tokens": null,
+      "provenance": null,
+      "max_request_tokens": 1024,
+      "max_output_tokens": 32,
+      "request_timeout_seconds": 60,
+      "resource_limits": {"cpus": null, "memory_mb": null},
+      "institutional_only": true,
+      "synthetic": false
+    }
+  },
+  "approved_capacity": {
+    "operator": null,
+    "approval_reference": null,
+    "host": null,
+    "resource_limit_evidence": null,
+    "engine_version": null,
+    "license_review": null,
+    "local_only": false,
+    "egress_blocked": false,
+    "existing_installed_model": false,
+    "deadline_utc": null
+  }
+}

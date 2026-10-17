@@ -234,7 +234,9 @@ class Ledger:
         values = (project, subject) if subject is not None else (project,)
         row = db.execute(
             "SELECT COALESCE(SUM(COALESCE(actual,reserved)),0) AS committed, "
-            "COALESCE(SUM(state='pending'),0) AS active, "
+            # Unknown completion may still be running in the engine. Keep its
+            # concurrency slot until an operator supplies reconciliation evidence.
+            "COALESCE(SUM(state IN ('pending','unknown')),0) AS active, "
             "COALESCE(SUM(state='unknown'),0) AS unresolved "
             "FROM requests WHERE " + where,
             values,

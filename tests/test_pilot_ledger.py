@@ -70,7 +70,7 @@ def test_unknown_usage_survives_restart_and_needs_evidence(setup):
     request = ledger.admit(token, "embedding", 600)
     ledger.settle(request, None)
     ledger = pilot.Ledger(ledger.path)
-    assert ledger.usage("course01") == {"committed": 600, "active": 0, "unresolved": 1}
+    assert ledger.usage("course01") == {"committed": 600, "active": 1, "unresolved": 1}
     ledger.settle(request, 0)  # retry cannot erase an unresolved liability
     assert ledger.usage("course01")["committed"] == 600
     with pytest.raises(ValueError):

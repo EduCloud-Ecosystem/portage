@@ -5,6 +5,7 @@
 # Python
 __pycache__/
 *.pyc
+.qualification/
 .venv/
 
 # device-bridge git lock workaround (bridge cannot unlink)
