@@ -110,7 +110,7 @@ def validate_manifest(manifest, mode):
         for field in ("revision", "provenance", "endpoint", "resource_limits"):
             if not model.get(field):
                 raise ValueError(f"{alias}: missing {field}")
-        if not model.get("institutional_only"):
+        if model.get("institutional_only") is not True:
             raise ValueError("pilot routes must be institutional only")
         endpoint = urlsplit(model["endpoint"])
         if (
@@ -160,8 +160,8 @@ def validate_manifest(manifest, mode):
                 raise ValueError("qualification requires a deadline up to 120 seconds")
         if mode == "hosted":
             evidence = model.get("qualification", {})
-            if model.get("synthetic") or not all(
-                evidence.get(k)
+            if model.get("synthetic") is not False or not all(
+                evidence.get(k) is True
                 for k in (
                     "provenance",
                     "compatibility",
@@ -175,7 +175,7 @@ def validate_manifest(manifest, mode):
             ):
                 raise ValueError(f"{alias}: institutional qualification incomplete")
     if mode == "hosted" and not all(
-        manifest.get("acceptance", {}).get(k)
+        manifest.get("acceptance", {}).get(k) is True
         for k in (
             "institution",
             "data_destinations",

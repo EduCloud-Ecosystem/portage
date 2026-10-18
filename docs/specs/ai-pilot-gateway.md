@@ -28,6 +28,10 @@ the conservative bound for the selected model tokenizer before hosted use.
 
 The manifest must name actual model revisions, provenance, endpoints, finite
 resources and allowances. Synthetic mock manifests cannot start in hosted mode.
+Hosted models must explicitly declare `synthetic: false`; `institutional_only`,
+every model qualification gate, and every service acceptance gate require JSON
+`true` after evidence review. Strings such as `NOT RUN`, `FAIL`, or `false`,
+numeric flags, and missing values do not qualify a model or approve a service.
 Model availability and quality are separate qualification outcomes. No
 institutional model is qualified by the synthetic harness.
 
