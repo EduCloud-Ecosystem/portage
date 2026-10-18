@@ -54,6 +54,9 @@ jobs:
   # ---- Automated review: only runs if the gate is green. ----
   review:
     needs: gate
+    # Promotion and merging never authorize model spend. An operator must
+    # explicitly enable paid review with a repository variable and API secret.
+    if: ${{ !github.event.pull_request.draft && vars.PORTAGE_ENABLE_PAID_REVIEW == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
