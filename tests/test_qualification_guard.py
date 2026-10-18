@@ -8,6 +8,7 @@ import multiprocessing
 import os
 import shutil
 import sqlite3
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
@@ -700,9 +701,21 @@ def test_crash_abandons_pending_work_with_no_replay(tmp_path, monkeypatch, stage
 def test_second_process_at_last_inference_slot_refused_busy(tmp_path, monkeypatch):
     env = fixture.setup(tmp_path, monkeypatch)
     races = []
+    final_batch_ready = threading.Barrier(2)
 
     def hook(req):
-        if "/v1/" in req.full_url and sum("/v1/" in url for url in env.calls) == 15:
+        if "/v1/" not in req.full_url:
+            return
+        with env.ledger.db() as db:
+            slot = db.execute(
+                "SELECT slot FROM qualification_attempts WHERE request=?",
+                (req.get_header("X-portage-request-id"),),
+            ).fetchone()[0]
+        if slot.startswith("batch11."):
+            final_batch_ready.wait(timeout=10)
+        if slot == list(INFERENCE)[-1]:
+            with env.ledger.db() as db:
+                assert db.execute("SELECT count(*) FROM requests").fetchone()[0] == 16
             races.append(child(env, tmp_path, action="acquire"))
 
     env.hook = hook
