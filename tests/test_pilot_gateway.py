@@ -199,3 +199,77 @@ def test_manifest_requires_positive_resource_ceiling(server, limits):
     service.manifest["models"]["embedding"]["resource_limits"] = limits
     with pytest.raises(ValueError):
         gateway.validate_manifest(service.manifest, "synthetic")
+
+
+@pytest.fixture
+def hosted_manifest():
+    qualification = dict.fromkeys(
+        (
+            "provenance",
+            "compatibility",
+            "streaming",
+            "retrieval_quality",
+            "latency",
+            "concurrency",
+            "resource_usage",
+            "token_bound",
+        ),
+        True,
+    )
+    return {
+        "project": "course01",
+        "mode": "hosted",
+        "project_allowance": 2000,
+        "participant_allowance": 1000,
+        "concurrency": 2,
+        "acceptance": dict.fromkeys(
+            ("institution", "data_destinations", "retention", "restore", "accessibility"),
+            True,
+        ),
+        "models": {
+            alias: {
+                "operation": "embeddings" if alias == "embedding" else "chat/completions",
+                "endpoint": "http://127.0.0.1:11434",
+                "revision": "reviewed-revision",
+                "provenance": "reviewed artifact",
+                "resource_limits": {"cpus": 1, "memory_mb": 128},
+                "max_output_tokens": 100,
+                "max_request_tokens": 1000,
+                "synthetic": False,
+                "institutional_only": True,
+                "qualification": qualification.copy(),
+            }
+            for alias in (
+                "classifier",
+                "code_small",
+                "code_large",
+                "research_synthesis",
+                "embedding",
+            )
+        },
+    }
+
+
+def test_hosted_manifest_accepts_explicit_completed_gates(hosted_manifest):
+    gateway.validate_manifest(hosted_manifest, "hosted")
+
+
+@pytest.mark.parametrize("value", ["NOT RUN", "FAIL", "false", 1, {}, None])
+@pytest.mark.parametrize("gate", ["qualification", "acceptance", "institutional_only"])
+def test_hosted_manifest_rejects_truthy_non_boolean_gates(hosted_manifest, gate, value):
+    model = hosted_manifest["models"]["code_small"]
+    if gate == "qualification":
+        model[gate]["token_bound"] = value
+    elif gate == "acceptance":
+        hosted_manifest[gate]["institution"] = value
+    else:
+        model[gate] = value
+    with pytest.raises(ValueError):
+        gateway.validate_manifest(hosted_manifest, "hosted")
+
+
+@pytest.mark.parametrize("value", [None, 0, "false", True])
+def test_hosted_manifest_requires_explicit_non_synthetic_model(hosted_manifest, value):
+    hosted_manifest["models"]["code_small"]["synthetic"] = value
+    with pytest.raises(ValueError):
+        gateway.validate_manifest(hosted_manifest, "hosted")

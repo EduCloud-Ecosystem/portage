@@ -54,9 +54,9 @@ jobs:
   # ---- Automated review: only runs if the gate is green. ----
   review:
     needs: gate
-    # Drafts are reviewable without invoking a paid model. Human promotion is
-    # separate from the deterministic, model-free test gate.
-    if: ${{ !github.event.pull_request.draft }}
+    # Promotion and merging never authorize model spend. An operator must
+    # explicitly enable paid review with a repository variable and API secret.
+    if: ${{ !github.event.pull_request.draft && vars.PORTAGE_ENABLE_PAID_REVIEW == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
