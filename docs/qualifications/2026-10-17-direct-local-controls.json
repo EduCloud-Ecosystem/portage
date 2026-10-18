@@ -1,0 +1,301 @@
+{
+  "controls": {
+    "cases": [
+      {
+        "control": "test_identity_mapping_and_spoofing[False]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_identity_mapping_and_spoofing[True]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_application_attribution_is_scoped",
+        "status": "PASS"
+      },
+      {
+        "control": "test_forbidden_work_never_dispatches[overrides0]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_forbidden_work_never_dispatches[overrides1]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_forbidden_work_never_dispatches[overrides2]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_forbidden_work_never_dispatches[overrides3]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_forbidden_work_never_dispatches[overrides4]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_redirect_never_dispatches_to_foreign_destination",
+        "status": "PASS"
+      },
+      {
+        "control": "test_proxy_environment_cannot_change_destination",
+        "status": "PASS"
+      },
+      {
+        "control": "test_revocation_and_unavailable_authority_fail_closed[authority]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_revocation_and_unavailable_authority_fail_closed[ledger]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_revocation_and_unavailable_authority_fail_closed[unavailable]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_revocation_and_unavailable_authority_fail_closed[expired]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_membership_rechecked_after_body_receipt",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exhausted_allowance_blocks_before_dispatch[member]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exhausted_allowance_blocks_before_dispatch[project]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_concurrency_and_every_retry_are_admitted",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_usage_retains_budget_and_slot_across_restart[False-missing-12]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_usage_retains_budget_and_slot_across_restart[True-missing-12]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_usage_retains_budget_and_slot_across_restart[True-truncated-12]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_usage_retains_budget_and_slot_across_restart[True-error_chunk-12]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_usage_retains_budget_and_slot_across_restart[False-normal--1]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_usage_retains_budget_and_slot_across_restart[True-normal-True]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_usage_retains_budget_and_slot_across_restart[False-normal-12]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_usage_retains_budget_and_slot_across_restart[False-failure-12]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_client_cancellation_retains_unknown_liability",
+        "status": "PASS"
+      },
+      {
+        "control": "test_stream_deadline_retains_reservation",
+        "status": "PASS"
+      },
+      {
+        "control": "test_header_deadline_retains_reservation",
+        "status": "PASS"
+      },
+      {
+        "control": "test_qualification_cannot_select_external_or_ambiguous_origin[https://example.com]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_qualification_cannot_select_external_or_ambiguous_origin[http://localhost:11434]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_qualification_cannot_select_external_or_ambiguous_origin[http://127.0.0.1/v1]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_qualification_cannot_select_external_or_ambiguous_origin[http://user:secret@127.0.0.1]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_qualification_cannot_select_external_or_ambiguous_origin[http://127.0.0.1?model=x]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_qualification_cannot_be_promoted_or_claim_embeddings",
+        "status": "PASS"
+      },
+      {
+        "control": "test_live_protocol_against_synthetic_engine_only",
+        "status": "PASS"
+      },
+      {
+        "control": "test_live_protocol_stops_after_ambiguous_usage",
+        "status": "PASS"
+      },
+      {
+        "control": "test_live_manifest_fails_before_engine_contact[no_approval]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_live_manifest_fails_before_engine_contact[synthetic]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_live_manifest_fails_before_engine_contact[deadline]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_live_manifest_fails_before_engine_contact[budget]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_model_pin_mismatches_fail_without_generation[version]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_model_pin_mismatches_fail_without_generation[digest]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_model_pin_mismatches_fail_without_generation[cloud]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_model_pin_mismatches_fail_without_generation[template]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_model_pin_mismatches_fail_without_generation[quant]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_http_models_and_streaming_accounting",
+        "status": "PASS"
+      },
+      {
+        "control": "test_each_background_call_and_embedding_is_accounted",
+        "status": "PASS"
+      },
+      {
+        "control": "test_membership_checked_on_next_request",
+        "status": "PASS"
+      },
+      {
+        "control": "test_forbidden_alias_never_reaches_inference",
+        "status": "PASS"
+      },
+      {
+        "control": "test_synthetic_cannot_be_promoted_by_mode_change",
+        "status": "PASS"
+      },
+      {
+        "control": "test_manifest_requires_positive_resource_ceiling[limits0]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_manifest_requires_positive_resource_ceiling[limits1]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_manifest_requires_positive_resource_ceiling[limits2]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_manifest_requires_positive_resource_ceiling[limits3]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_manifest_requires_positive_resource_ceiling[limits4]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_manifest_requires_positive_resource_ceiling[limits5]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_credential_attribution_and_revocation",
+        "status": "PASS"
+      },
+      {
+        "control": "test_concurrent_reservation_atomic_across_connections",
+        "status": "PASS"
+      },
+      {
+        "control": "test_project_allowance_aggregates_members",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_usage_survives_restart_and_needs_evidence",
+        "status": "PASS"
+      },
+      {
+        "control": "test_disabled_expired_and_retired_fail_closed",
+        "status": "PASS"
+      },
+      {
+        "control": "test_pending_crash_reservation_is_not_released",
+        "status": "PASS"
+      },
+      {
+        "control": "test_no_payload_or_credential_in_database",
+        "status": "PASS"
+      },
+      {
+        "control": "test_model_allowlist_and_spoofed_fields",
+        "status": "PASS"
+      }
+    ],
+    "evidence_class": "synthetic loopback HTTP; no model",
+    "status": "PASS"
+  },
+  "created_utc": "2026-10-17T22:27:19.167965+00:00",
+  "decision": "DEFER: no model or capacity qualified; no deployment authorized",
+  "model": null,
+  "observed_model": null,
+  "reason": "No approved capacity manifest supplied; no engine contacted",
+  "runtime": {
+    "attempt_accounting": "NOT RUN",
+    "availability": "NOT RUN",
+    "bounded_task_quality": "NOT RUN",
+    "concurrency_1_and_2": "NOT RUN",
+    "effective_context": "NOT RUN",
+    "engine_attempt_visibility": "NOT RUN",
+    "engine_peak_memory": "NOT RUN",
+    "latency": "NOT RUN",
+    "model_identity": "NOT RUN",
+    "operator_restart": "NOT RUN",
+    "resident_memory_samples": "NOT RUN",
+    "token_reservation_bound": "NOT RUN"
+  },
+  "schema_version": 1,
+  "source": {
+    "platform": "macOS-26.5-arm64-arm-64bit",
+    "python": "3.12.13",
+    "revision": "e78a6b6e3952d02fb52c041a1efcada7243f8212",
+    "sha256": {
+      "integrations/ai_pilot/gateway.py": "6da27ccdd7804335d9452c4d3c0d35b33d51e978b6f381120968157b3390c437",
+      "integrations/ai_pilot/qualify.py": "b52e6d98987ec8a83b3ebfcb3b95e7e5d41e8d3a5d2ec52d7a3b5919467f31da",
+      "src/portage/pilot_ledger.py": "611ecdae28474294f6050a3a9999d614f5ca97ad098113d0be49300f1246273f",
+      "tests/test_direct_qualification.py": "2118b86f5fee8daed80377592c5bca26821016adafd4f34b01c9be7e014fef25",
+      "tests/test_pilot_gateway.py": "30791e2718b8babe53ea60dbf2c9d7b9a5769b34e8308e2ec24670af6cf38af5",
+      "tests/test_pilot_ledger.py": "990bf17f2ada94df5a281be6df994d1feaebd301c632fc75c0fab818309950bc"
+    }
+  }
+}

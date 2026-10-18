@@ -34,3 +34,9 @@ every model qualification gate, and every service acceptance gate require JSON
 numeric flags, and missing values do not qualify a model or approve a service.
 Model availability and quality are separate qualification outcomes. No
 institutional model is qualified by the synthetic harness.
+
+The [direct inference qualification protocol](direct-inference-qualification.md)
+adds an opt-in single-model local path. Unknown requests retain concurrency
+slots as well as token reservations until reconciliation; a timed-out or
+disconnected client does not prove the engine stopped. Default routes and
+hosted qualification requirements remain unchanged.

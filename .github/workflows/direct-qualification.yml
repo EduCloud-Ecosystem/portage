@@ -1,0 +1,24 @@
+name: direct-qualification
+on:
+  pull_request:
+    paths:
+      - integrations/ai_pilot/**
+      - src/portage/pilot_ledger.py
+      - tests/test_pilot_*.py
+      - tests/test_direct_qualification.py
+      - .github/workflows/direct-qualification.yml
+permissions:
+  contents: read
+jobs:
+  controls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv run ruff check .
+      - run: uv run python integrations/ai_pilot/qualify.py --output .qualification/ci
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetic-qualification
+          path: .qualification/ci
