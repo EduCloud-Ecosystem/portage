@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "capacity": {
+    "operator_ref": null,
+    "approval_evidence_ref": null,
+    "host_ref": null,
+    "engine_version": null,
+    "model_name": null,
+    "model_sha256": null,
+    "template_sha256": null,
+    "quantization": null,
+    "context_tokens": null,
+    "cpus": null,
+    "memory_mb": null,
+    "license_evidence_ref": null,
+    "resource_limit_evidence_ref": null,
+    "egress_evidence_ref": null,
+    "durable_ledger_ref": null,
+    "recovery_evidence_ref": null,
+    "window_start_utc": null,
+    "window_end_utc": null,
+    "max_attempts": 16,
+    "concurrency": 2,
+    "max_request_tokens": 1024,
+    "max_output_tokens": 32,
+    "aggregate_token_ceiling": 32768
+  },
+  "costs": {
+    "need_and_alternatives": {"evidence_ref": null},
+    "exact_resource": {"evidence_ref": null},
+    "primary_source_terms": {"evidence_ref": null},
+    "finite_request": {"evidence_ref": null},
+    "full_exposure": {
+      "evidence_ref": null,
+      "one_time_amount": null,
+      "recurring_amount": null,
+      "currency": null,
+      "billing_interval": null,
+      "native_ceiling": null,
+      "native_unit": null
+    },
+    "controls": {"evidence_ref": null},
+    "operations": {"evidence_ref": null},
+    "decision": {"evidence_ref": null}
+  }
+}

@@ -173,3 +173,69 @@ isolation, recovery/revocation/deletion reconciliation, retention, support,
 accessibility, representative task quality and cohort load remain service gates.
 Synthetic results do not admit private research or student records. Hosted
 launch, adoption and default-route migration require separate approval.
+
+## Offline capacity review packet
+
+`review_packet.py` turns **one existing public record** and a separate capacity
+draft into `packet.json` and `packet.md`. It does not run controls, contact an
+engine, import the qualifier/gateway, open a ledger, or authorize any action.
+The accepted 95-control record stays unchanged, including its original source
+revision, file hashes, platform, denominators, and all runtime gates NOT RUN.
+
+Reproduce a review packet from that pinned record without running inference:
+
+```sh
+mkdir -p .qualification
+uv run python integrations/ai_pilot/review_packet.py \
+  --root . \
+  --record docs/qualifications/2026-10-17-direct-local-review-controls.json \
+  --expected-sha256 7744b3f070cae861d0a06bf547795d89d9f46f00157ea8db9484fa1cb8ec190f \
+  --capacity-draft integrations/ai_pilot/capacity-review.example.json \
+  --output .qualification/capacity-review-01
+```
+
+Supply the expected record SHA256 from a separately trusted review or source
+commit. Calculating a hash from an unknown record and immediately treating that
+same hash as trusted only proves self-consistency. The packet verifies bytes,
+not the truth of an operator statement or the current machine's state.
+
+The capacity draft is deliberately incomplete and has its own schema. It is
+**not** the executable `qualification.example.json` manifest and contains no
+hosted-readiness booleans. Proposed protocol limits are not resource approvals.
+Use public opaque operator/host/ledger references; keep private names, account
+credentials and absolute ledger paths in the appropriate protected system.
+All `*_evidence_ref` fields must refer to an explicitly pinned artifact:
+repeat `--artifact relative/path=SHA256` for each public evidence file. Cost
+category `evidence_ref` fields use the same references. File contents are not
+copied, interpreted as instructions, or combined into another run's results.
+
+The packet follows the umbrella cost packet's eight categories: need and
+alternatives, exact resource, primary-source terms, finite request, full exposure,
+controls, operations, and decision. Missing cost amounts, currency, billing
+interval, and native-unit ceilings remain null. The builder neither calculates
+prices nor converts tokens, native allocation units, or memory measurements
+into currency. A complete draft only passes **field completeness**; execution,
+promotion and spending authorization are always false.
+
+Source-reported runtime results remain separately labeled unverified claims;
+offline review never promotes them to live acceptance. Failed or skipped controls
+cannot become a control PASS. Missing usage stays unknown; pending/unknown
+attempts remain visible even if the imported aggregate claims zero. Measurements
+retain their native units. The packet accepts exactly one source record and
+does not pool different model, template, context or platform results.
+
+Use a narrow root containing intended public evidence. Inputs and output paths
+must be relative to that root with existing real parent directories. Symlinks,
+FIFOs, devices, traversal, duplicate JSON keys/control IDs, nonfinite numbers,
+and output collisions are rejected. Limits are 1 MiB per record/artifact,
+64 KiB per draft, 16 extra artifacts, 4 MiB total input, 2,048 controls and 16
+attempts. The new output directory is private (0700), with 0600 files. Invalid
+inputs create no output; an I/O failure while writing may leave an incomplete
+new directory for inspection. Nothing is overwritten. Only whitelisted public
+fields are emitted; control parameter text is replaced with a case-identity hash.
+
+The resulting decision remains: assign an existing approved host, installed
+permitted model and named operator, complete the pinned model/resource/egress/
+recovery evidence, and separately approve one bounded window and native-unit
+ceiling. If capacity is unavailable, retain **NOT RUN** and continue offline
+work. This packet requests no purchase and performs no deployment or route change.
