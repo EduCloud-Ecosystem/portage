@@ -11,6 +11,32 @@
   },
   "checks": {
     "ci": "Final pull-request head CI is a separate merge gate, not asserted by this local record",
+    "deterministic_race_fixture": {
+      "predetermined_runs": 5,
+      "results": [
+        {
+          "run": 1,
+          "status": "PASS"
+        },
+        {
+          "run": 2,
+          "status": "PASS"
+        },
+        {
+          "run": 3,
+          "status": "PASS"
+        },
+        {
+          "run": 4,
+          "status": "PASS"
+        },
+        {
+          "run": 5,
+          "status": "PASS"
+        }
+      ],
+      "review": "No blockers; durable slot and final-batch rendezvous preserve busy/zero-contact and owner completion assertions"
+    },
     "diff_whitespace": "PASS",
     "generated_profiles": {
       "scale1.example": "PASS",
@@ -25,12 +51,39 @@
         "directory and lock identity protection",
         "failed durable hold terminal latch",
         "actual Gateway dispatch binding",
-        "per-request keep-alive authority phase"
+        "per-request keep-alive authority phase",
+        "unchecked clock watermark overwrite"
       ],
       "report": "No blocking code findings remain. The reset correctly scopes authority phases to each request, and the regression reuses one Handler across two approved slots with valid metadata prerequisites. Read-only review complete; no tests, network calls, or mutations performed. Final test and CI results remain the release gate.",
       "status": "NO_BLOCKING_FINDINGS"
     },
+    "preserved_failed_ci_runs": [
+      {
+        "cause": "Missing pytest temporary directory parent; workflow setup failure",
+        "correction": "Create parent before running pytest; runtime unchanged",
+        "head": "e74c37de971e7b128e4bc5eedb5c117269afb946",
+        "result": "Separate guard step: 2 passed, 60 setup errors",
+        "url": "https://github.com/EduCloud-Ecosystem/portage/actions/runs/39103722745"
+      },
+      {
+        "cause": "Both concurrent final calls could see 14 contacts before either appended; count15 trigger could miss the competitor",
+        "correction": "Resolve durable final slot and rendezvous both final admissions before launching competitor; retain busy/zero-contact and owner16/final-ps assertions; test-only change",
+        "head": "2fb7e0841322da105a35e0f70306b87d953668b0",
+        "result": "Separate guard step: 61 passed, 1 failed assertion",
+        "url": "https://github.com/EduCloud-Ecosystem/portage/actions/runs/39103902273"
+      }
+    ],
     "ruff": "PASS"
+  },
+  "clock_watermark_correction": {
+    "baseline_guard_sha256": "726dc854ec8a52e3ec3300820e7746b5e60a233a8d40b3981532a1c3a106e194",
+    "baseline_junit_sha256": "bc2794d2e4de951b5e09dc2fd83d1a4a4d440b106ed1be9bc3770def57d33f2f",
+    "baseline_result": "FAIL: an unchecked second clock read lowered the persisted watermark",
+    "baseline_revision": "2fb7e0841322da105a35e0f70306b87d953668b0",
+    "baseline_test_added_for_reproduction": true,
+    "control": "test_clock_watermark_never_overwritten_by_unchecked_read",
+    "fixed_result": "PASS: validated higher watermark persists; next rollback check holds the grant with zero contacts",
+    "independent_review": "No blockers in the narrow fix; _validate is the sole runtime watermark updater"
   },
   "controls": {
     "durable_guard": {
@@ -282,14 +335,18 @@
         {
           "control": "test_keepalive_handler_rechecks_both_authority_phases_for_next_slot",
           "status": "PASS"
+        },
+        {
+          "control": "test_clock_watermark_never_overwritten_by_unchecked_read",
+          "status": "PASS"
         }
       ],
       "failed": 0,
-      "passed": 62
+      "passed": 63
     },
     "full_suite": {
       "failed": 0,
-      "passed": 512,
+      "passed": 513,
       "skipped": 6,
       "skipped_controls": [
         "tests.test_code_profile.test_every_registered_code_reason_has_a_legacy_string",
@@ -301,7 +358,7 @@
       ]
     },
     "runner_preflight": {
-      "passed": 174,
+      "passed": 175,
       "runtime_gates": "12 NOT RUN",
       "status": "PASS"
     }
@@ -592,18 +649,18 @@
   "source": {
     "platform": "macOS-26.5-arm64-arm-64bit",
     "python": "3.12.13",
-    "revision": "af4736fe5074b62a88dc63c7a0e2cd40ba37b3c9",
+    "revision": "7a2167ce4f4e75835898b1be1de6f02749da380d",
     "sha256": {
       "integrations/ai_pilot/gateway.py": "ea14bafe33a5a1dd83a26d7ca1d50d08d042b3252b80aed08015f6d3ee6e5242",
       "integrations/ai_pilot/qualify.py": "a556a5573e1bc0d52c43b68ec1a2025b558b7a2ae33bcd2877bdf44103e516cd",
       "src/portage/pilot_ledger.py": "03c5272ddb9679a64fea71358a123107a62402a26ad6dd4e88c8d9810ab04aee",
-      "src/portage/qualification_guard.py": "726dc854ec8a52e3ec3300820e7746b5e60a233a8d40b3981532a1c3a106e194",
+      "src/portage/qualification_guard.py": "3eaf671572c8b8841ae87752d1313ea8cd4856dadebb225a01f900e44938e485",
       "tests/qualification_fixtures.py": "9f716db1d08d879b02b8b6ed16a4fe7a379f0d048f9427ccc96f00947ab50eca",
       "tests/test_direct_qualification.py": "f86e0fdb8cfc1966c99d990ebc53af91109eefca41326e923326b4b09382dac9",
       "tests/test_pilot_gateway.py": "c7247aa67a355d13c209231cacd3c635a06f2bcec3ec8784a29a7e8bc79b4f3b",
       "tests/test_pilot_ledger.py": "990bf17f2ada94df5a281be6df994d1feaebd301c632fc75c0fab818309950bc",
       "tests/test_qualification_expiry.py": "e81f246af102031f243e644098e59871e548932b195f635f9ea34e398fe7bc33",
-      "tests/test_qualification_guard.py": "52c7cbc3170dbd9901a631c0ab288e140b59ed0b2de5be3fbc54a3ed109ec47a"
+      "tests/test_qualification_guard.py": "c36c9baf6da01c4352531d676d11808ccf03582708d5817eaea9ee71c08ad3e1"
     }
   }
 }
