@@ -24,7 +24,9 @@ jobs:
       - name: Approval-expiry regressions (separate synthetic evidence)
         run: uv run pytest tests/test_qualification_expiry.py --junitxml=.qualification/expiry-ci/controls.xml
       - name: Durable approval regressions (in-memory transport only)
-        run: uv run pytest tests/test_qualification_guard.py --basetemp=.qualification/durable-ci/tmp --junitxml=.qualification/durable-ci/controls.xml
+        run: |
+          mkdir -p .qualification/durable-ci
+          uv run pytest tests/test_qualification_guard.py --basetemp=.qualification/durable-ci/tmp --junitxml=.qualification/durable-ci/controls.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with:
