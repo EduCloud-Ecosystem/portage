@@ -1,6 +1,6 @@
 # Proposed Jetstream2 hosted qualification contract
 
-**Status: fixture-only implementation; review and final checks pending.** This
+**Status: fixture-only implementation reviewed; local checks pass.** This
 spec defines a pure, fixture-only module for an optional hosted qualification
 lane. It authorizes no provider selection, credential access, network request,
 inference, deployment, spending, or default-route change.
@@ -205,9 +205,13 @@ pure-module assertions from later runtime integration tests. The focused local
 suite has 147 passing tests. Runtime requirements remain NOT RUN; describing or
 classifying them in fixtures does not establish live enforcement.
 
-For the authorized offline implementation, require deterministic tests with
-network and secret access prohibited, sanitization checks, and independent
-review. Then run the existing 95 controls, 17 expiry controls, full suite, lint,
-and generated-profile checks. Record new evidence separately at the reviewed
-source revision. An offline implementation PASS is not execution authorization,
-provider qualification, deployment acceptance, or route promotion.
+The local full suite passes 450 tests, including the existing 95 controls and
+17 expiry controls, with six existing skips for the absent sibling verifier
+contract checkout. Lint and all three generated-profile checks pass;
+independent read-only review found no blocking issues. The new
+[source-pinned evidence record](../qualifications/2026-10-17-hosted-contract-controls.json)
+keeps these results separate from the frozen local qualification records.
+
+An offline implementation PASS is not execution authorization, provider
+qualification, deployment acceptance, or route promotion. Final pull-request
+CI remains a separate merge gate.

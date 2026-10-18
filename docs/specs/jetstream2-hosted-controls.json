@@ -157,7 +157,7 @@
   "default_route_eligible": false,
   "deployment_authorized": false,
   "fixture_results_scope": "147 focused tests pass locally; this does not verify runtime requirements.",
-  "implementation_status": "FIXTURE MODULE IMPLEMENTED; review and final checks pending",
+  "implementation_status": "FIXTURE MODULE REVIEWED; local checks pass; final pull-request CI is a separate gate",
   "pass_scope": "Fixture behavior only; no provider observation, runtime enforcement or authorization follows from synthetic PASS.",
   "preserved_evidence": [
     {
@@ -173,7 +173,7 @@
   ],
   "promotion_authorized": false,
   "provider_selected": false,
-  "regressions_required_after_approved_implementation": [
+  "completed_local_regressions": [
     "existing 95 synthetic controls",
     "existing 17 expiry controls",
     "full suite",
@@ -185,5 +185,5 @@
   "runtime_files_created": false,
   "schema_version": 1,
   "spending_authorized": false,
-  "status": "FIXTURE_ONLY_DESIGN_ACCEPTED"
+  "status": "FIXTURE_IMPLEMENTATION_REVIEWED"
 }
