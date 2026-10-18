@@ -4,7 +4,7 @@
 pass; no approved running engine/model was available. This record authorizes
 neither deployment nor a default-route change.
 
-## Revision and ownership
+## Initial preparation and ownership
 
 - Remote main inspected: `2ec86ad0447d71a90ab545206b44fe41dbb69ee0`.
 - Existing local pilot source preserved: `9e2a877ef414413a402093d7ca06bb7ff60c5200`.
@@ -13,9 +13,9 @@ neither deployment nor a default-route change.
 - Qualification code: `e78a6b6e3952d02fb52c041a1efcada7243f8212`.
 - Work tracking: [Portage #9](https://github.com/EduCloud-Ecosystem/portage/issues/9).
 - Prerequisite review: [Portage #10](https://github.com/EduCloud-Ecosystem/portage/pull/10),
-  draft; deterministic CI passed, paid model reviewer skipped.
+  initially draft; see the subsequent review below.
 - Qualification review: [Portage #11](https://github.com/EduCloud-Ecosystem/portage/pull/11),
-  stacked draft; [Linux synthetic CI passed](https://github.com/EduCloud-Ecosystem/portage/actions/runs/39075295809)
+  initially stacked; [Linux synthetic CI passed](https://github.com/EduCloud-Ecosystem/portage/actions/runs/39075295809)
   at `1f9197c`. The CI record preserves actual runtime criteria as NOT RUN.
 
 Only the isolated Portage worktree changed. The original Portage checkout is
@@ -68,7 +68,7 @@ The [operator protocol](../specs/direct-inference-qualification.md) contains
 reproduction commands, finite live manifest, instrumentation, cancellation and
 restart/reconciliation steps. The fixture run uses no weights or provider calls.
 
-Final local validation at `e78a6b6` on macOS 26.5 arm64, Python 3.12.13:
+Initial local validation at `e78a6b6` on macOS 26.5 arm64, Python 3.12.13:
 **65/65 qualification controls PASS; full suite 195 passed, 6 skipped**
 (74.03 seconds). Ruff and diff whitespace checks pass. All three generated
 routing profiles match their sources, and the profile/schema/package files
@@ -96,6 +96,41 @@ The six full-suite skips are preexisting verifier-contract integration checks:
 the sibling `verifier-contract` checkout is absent from this isolated worktree.
 They are not passing evidence. Human institutional/service acceptance and
 independent real-capacity reproduction have not occurred.
+
+## PR review and subsequent validation
+
+The authorized review found a hosted-readiness defect: truthy text including
+`NOT RUN` and `FAIL` could satisfy qualification, acceptance and institutional-only
+checks, while missing or numeric-false synthetic flags could admit a hosted
+manifest. The regression matrix reproduced 14 failures. Prerequisite fix
+`c080530ce507611ea7d0cee1ed88143a798410ce` now requires explicit JSON booleans;
+all 23 new cases pass. It also requires an explicit repository-variable opt-in
+for paid automated review, independently of PR draft status. No opt-in was set.
+
+PR #10's [deterministic CI passed](https://github.com/EduCloud-Ecosystem/portage/actions/runs/39091086027),
+with paid review skipped. It merged first at
+`cf41ddedc7b9c5710a707365ccf7c5a8a9b5b7ad` (2026-10-18 02:45:15 UTC).
+PR #11 was retargeted to `main` and incorporates that merge without rewriting
+the original checkout or branch history.
+
+The same review reproduced five failing cases in the qualification reporter:
+skipped/failed/error controls could produce overall PASS with a zero subprocess
+exit, and absent or negative resident sizes could be marked PASS. Fix
+`b4960b0` requires every selected control to pass and validates reported sizes.
+The retained pre-fix run is `.qualification/admin/review-regressions-before-fix.log`.
+These are synthetic regression failures, not actual engine measurements.
+
+The reviewed source is `9da403ea3f79da959960940d6717523f2fb7ca92`, including
+the merged prerequisite. Full local validation passed **225 tests, with six
+preexisting verifier-contract skips**, in 68.17 seconds. Ruff and whitespace
+checks pass. Default profiles, schemas and package configuration are unchanged.
+The full log/JUnit evidence is `.qualification/admin/review-full-suite.{log,xml}`.
+The separately pinned runner passed **95/95 synthetic controls**; its
+[machine-readable review record](2026-10-17-direct-local-review-controls.json)
+contains exact source hashes and leaves all 12 runtime gates NOT RUN. Raw
+evidence is retained in `.qualification/2026-10-17-review-controls/`.
+Actual inference remains **NOT RUN**; merge authorization does not authorize
+capacity use, spending, deployment or default-route changes.
 
 ## Concrete next decision
 
