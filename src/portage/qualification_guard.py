@@ -616,10 +616,6 @@ class QualificationGuard:
     def check(self):
         with self._write() as db:
             self._validate(db)
-            db.execute(
-                "UPDATE qualification_grants SET wall=?,mono=? WHERE id=?",
-                (self.clock.time(), self.clock.monotonic(), self.binding["grant_id"]),
-            )
 
     def acquire(self, token):
         if self.lease_fd is not None:

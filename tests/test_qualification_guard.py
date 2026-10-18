@@ -827,3 +827,29 @@ def test_keepalive_handler_rechecks_both_authority_phases_for_next_slot(
         "unresolved": 0,
     }
     guard.close()
+
+
+def test_clock_watermark_never_overwritten_by_unchecked_read(tmp_path, monkeypatch):
+    env = fixture.setup(tmp_path, monkeypatch)
+    guard = env.guard().acquire(env.token)
+    higher, lower = env.clock.wall + 1, env.clock.wall - 1
+    values = iter((higher, lower, lower))
+    monkeypatch.setattr(env.clock, "time", lambda: next(values))
+    try:
+        guard.check()
+        with env.ledger.db() as db:
+            assert (
+                db.execute("SELECT wall FROM qualification_grants").fetchone()[0]
+                == higher
+            )
+        with pytest.raises(Denied, match="clock_continuity_lost"):
+            guard.check()
+        assert state(env) == "held"
+        with env.ledger.db() as db:
+            assert (
+                db.execute("SELECT wall FROM qualification_grants").fetchone()[0]
+                == higher
+            )
+        assert not env.calls
+    finally:
+        guard.close()
