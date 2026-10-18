@@ -4,7 +4,7 @@ This corrective implementation binds the fixed local qualification protocol to o
 
 ## Confirmed failure and approved correction
 
-At source `b2ba332ff5f81ff15c7ada67d5fc2a79b65cde94`, two fresh processes using the same fixture approval, configuration and temporary ledger dispatched 16 inference calls each and 51 engine metadata calls each. Both reports claimed accounting PASS. Unknown inference retained its 176-unit reservation and slot, but a repeated invocation performed three metadata calls before refusing. The historical local proposal/reproduction and the frozen 95/17/147 evidence remain unchanged. A separate committed record will retain this failing baseline and corrected results.
+At source `b2ba332ff5f81ff15c7ada67d5fc2a79b65cde94`, two fresh processes using the same fixture approval, configuration and temporary ledger dispatched 16 inference calls each and 51 engine metadata calls each. Both reports claimed accounting PASS. Unknown inference retained its 176-unit reservation and slot, but a repeated invocation performed three metadata calls before refusing. The historical local proposal/reproduction and the frozen 95/17/147 evidence remain unchanged. The separate [durable approval record](../qualifications/2026-10-17-durable-approval-controls.json) retains this failing baseline and corrected results.
 
 ## Trust and startup
 
