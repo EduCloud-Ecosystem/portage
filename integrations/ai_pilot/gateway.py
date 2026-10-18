@@ -27,6 +27,12 @@ from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src" / "portage"))
 from pilot_ledger import Denied, Ledger, prepare_request  # noqa: E402
+from qualification_guard import (  # noqa: E402
+    QualificationGuard,
+    digest,
+    observe_usage,
+    unique_json,
+)
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -79,7 +85,7 @@ def qualification_window(manifest):
 
 
 @contextmanager
-def inference_attempt(request, timeout, approval_window=None):
+def inference_attempt(request, timeout, approval_window=None, dispatch_check=None):
     """One destination, no retry, absolute response deadline including connect."""
     deadline = time.monotonic() + timeout
 
@@ -117,6 +123,9 @@ def inference_attempt(request, timeout, approval_window=None):
         timer.daemon = True
         timer.start()
         remaining()
+        if dispatch_check is not None:
+            dispatch_check()
+        remaining()
         connection.request(
             request.get_method(),
             request.selector,
@@ -137,6 +146,98 @@ def inference_attempt(request, timeout, approval_window=None):
         if timer:
             timer.cancel()
         connection.close()
+
+
+def qualified_json(guard, attempt, request, validate, timeout=5):
+    """One consumed slot, one dispatch claim, and no retry on ambiguous metadata."""
+    known = False
+    try:
+        with inference_attempt(
+            request,
+            timeout,
+            approval_window=guard,
+            dispatch_check=lambda: guard.claim(attempt),
+        ) as response:
+            raw = response.read(262145)
+            if len(raw) > 262144:
+                raise ValueError("metadata too large")
+            result = unique_json(raw)
+            if not isinstance(result, dict):
+                raise ValueError("metadata object required")
+            validate(result)
+            known = True
+            return result
+    finally:
+        guard.finish(attempt, known=known)
+
+
+def qualified_authority(guard, kind, slot, phase, authority_key):
+    attempt = guard.authority(kind, slot, phase)
+    request = urllib.request.Request(
+        guard.binding["authority_url"].rstrip("/")
+        + "/internal/member/"
+        + guard.binding["subject"],
+        headers={"Authorization": "Bearer " + authority_key},
+    )
+
+    def validate(value):
+        if (
+            set(value) != {"active", "project"}
+            or value["active"] is not True
+            or value["project"] != guard.binding["project"]
+        ):
+            raise Denied("membership_required")
+
+    qualified_json(guard, attempt, request, validate)
+
+
+def validate_metadata(guard, op, value):
+    model = guard.manifest["models"]["code_small"]
+    if op == "version":
+        valid = (
+            value.get("version") == guard.manifest["approved_capacity"]["engine_version"]
+        )
+    elif op == "tags":
+        candidates = [
+            row for row in value["models"] if row.get("name") == model["upstream_model"]
+        ]
+        valid = len(candidates) == 1
+        if valid:
+            row = candidates[0]
+            valid = (
+                row.get("digest") == model["revision"]
+                and type(row.get("size")) is int
+                and row["size"] > 0
+                and not any(row.get(key) for key in ("remote_host", "remote_model"))
+            )
+    elif op == "show":
+        valid = (
+            digest(value["template"].encode()) == model["template_sha256"]
+            and value["details"].get("quantization_level") == model["quantization"]
+            and not any(value.get(key) for key in ("remote_host", "remote_model"))
+        )
+    else:
+        valid = type(value.get("models")) is list and all(
+            type(row) is dict for row in value["models"]
+        )
+    if not valid:
+        raise ValueError("engine metadata differs from approved profile")
+
+
+def qualified_metadata(guard, slot, authority_key):
+    item = guard._slot("metadata", slot)
+    qualified_authority(guard, "metadata", slot, "pre", authority_key)
+    attempt, _ = guard.admit("metadata", slot)
+    model = guard.manifest["models"]["code_small"]
+    body = {"model": model["upstream_model"]} if item["op"] == "show" else None
+    request = urllib.request.Request(
+        model["endpoint"].rstrip("/") + "/api/" + item["op"],
+        data=json.dumps(body).encode() if body is not None else None,
+        headers={"Content-Type": "application/json"},
+    )
+    return qualified_json(
+        guard, attempt, request, lambda value: validate_metadata(guard, item["op"], value)
+    )
 
 
 def validate_manifest(manifest, mode):
@@ -253,7 +354,17 @@ class Gateway(ThreadingHTTPServer):
         authority_key,
         *,
         approval_window=None,
+        qualification_guard=None,
     ):
+        self.qualification_guard = qualification_guard
+        if qualification_guard is not None and manifest["mode"] != "qualification":
+            raise ValueError("qualification guard requires qualification mode")
+        if manifest["mode"] == "qualification":
+            if not isinstance(qualification_guard, QualificationGuard):
+                raise ValueError("qualification requires a registered approval guard")
+            qualification_guard.validate_gateway(ledger, manifest, authority_url)
+            manifest = qualification_guard.manifest
+            approval_window = qualification_guard
         self.approval_window = (
             approval_window
             if approval_window is not None
@@ -291,7 +402,8 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", "0"))
         if not 0 < length <= 262144:
             raise Denied("request_size_limit", 413)
-        value = json.loads(self.rfile.read(length))
+        raw = self.rfile.read(length)
+        value = unique_json(raw) if self.server.qualification_guard else json.loads(raw)
         if not isinstance(value, dict):
             raise Denied("object_required", 400)
         return value
@@ -305,6 +417,23 @@ class Handler(BaseHTTPRequestHandler):
     def identity(self):
         token = self.token()
         asserted = self.headers.get("X-Portage-Subject")
+        guard = self.server.qualification_guard
+        if guard is not None:
+            project, member = guard.authenticate(token)
+            phase = (
+                "post"
+                if getattr(self, "qualification_identity_checked", False)
+                else "pre"
+            )
+            qualified_authority(
+                guard,
+                "inference",
+                self.qualification_slot,
+                phase,
+                self.server.authority_key,
+            )
+            self.qualification_identity_checked = True
+            return token, None, project, member
         project, member = self.server.ledger.authenticate(token, asserted)
         # No cache. An unreachable authority is not permission to admit work.
         url = self.server.authority_url + "/internal/member/" + member["subject"]
@@ -362,10 +491,22 @@ class Handler(BaseHTTPRequestHandler):
 
     def handle_request(self):
         admitted = None
+        self.qualification_identity_checked = False
         self.admitted = None
         self.response_started = False
         streaming = False
+        guarded_attempt = None
+        guard = self.server.qualification_guard
         try:
+            if guard is not None:
+                guard.validate_gateway(
+                    self.server.ledger, self.server.manifest, self.server.authority_url
+                )
+                if self.command != "POST" or self.path != "/v1/chat/completions":
+                    raise Denied("qualification_operation_not_allowed")
+                self.qualification_slot = self.headers.get("X-Portage-Qualification-Slot")
+                self.qualification_body = self.body()
+                guard.check_body(self.qualification_slot, self.qualification_body)
             if self.path == "/health" and self.command == "GET":
                 return self.reply(
                     200, {"status": "ok", "mode": self.server.manifest["mode"]}
@@ -400,7 +541,9 @@ class Handler(BaseHTTPRequestHandler):
             }:
                 raise Denied("not_found", 404)
             body, reserved = prepare_request(
-                self.body(), self.server.manifest["models"], self.path[4:]
+                self.qualification_body if guard else self.body(),
+                self.server.manifest["models"],
+                self.path[4:],
             )
             # Body receipt may block. Recheck the current authority immediately
             # before admission; the ledger then rechecks local revocation atomically.
@@ -408,15 +551,27 @@ class Handler(BaseHTTPRequestHandler):
             window = self.server.approval_window
             if window is not None:
                 window.check()
-            admitted = self.server.ledger.admit(
-                token,
-                body["model"],
-                reserved,
-                asserted,
-                admission_check=window.check if window is not None else None,
-            )
+            if guard is not None:
+                guarded_attempt, admitted = guard.admit(
+                    "inference",
+                    self.qualification_slot,
+                    token=token,
+                    body=self.qualification_body,
+                )
+            else:
+                admitted = self.server.ledger.admit(
+                    token,
+                    body["model"],
+                    reserved,
+                    asserted,
+                    admission_check=window.check if window is not None else None,
+                )
             self.admitted = admitted
             spec = self.server.manifest["models"][body["model"]]
+            if guard is not None:
+                guard.validate_gateway(
+                    self.server.ledger, self.server.manifest, self.server.authority_url
+                )
             if self.server.manifest["mode"] == "qualification":
                 body["model"] = spec["upstream_model"]
             request = urllib.request.Request(
@@ -434,6 +589,7 @@ class Handler(BaseHTTPRequestHandler):
                 request,
                 timeout=spec.get("request_timeout_seconds", 120),
                 approval_window=window,
+                dispatch_check=(lambda: guard.claim(guarded_attempt)) if guard else None,
             ) as upstream:
                 if body.get("stream"):
                     streaming = True
@@ -452,10 +608,14 @@ class Handler(BaseHTTPRequestHandler):
                         if line.strip() == b"data: [DONE]":
                             done = True
                         elif line.startswith(b"data: "):
-                            chunk = json.loads(line[6:])
+                            chunk = (
+                                unique_json(line[6:]) if guard else json.loads(line[6:])
+                            )
                             if chunk.get("error"):
                                 raise ValueError("upstream stream failed")
-                            if chunk.get("usage"):
+                            if guard:
+                                usage = observe_usage(usage, chunk)
+                            elif chunk.get("usage"):
                                 usage = chunk["usage"].get("total_tokens")
                         self.wfile.write(line)
                         self.wfile.flush()
@@ -464,17 +624,33 @@ class Handler(BaseHTTPRequestHandler):
                     if not done:
                         usage = None
                 else:
-                    result = json.load(upstream)
+                    if guard:
+                        raw = upstream.read(262145)
+                        if len(raw) > 262144:
+                            raise ValueError("response too large")
+                        result = unique_json(raw)
+                    else:
+                        result = json.load(upstream)
                     usage = (
-                        (result.get("usage") or {}).get("total_tokens")
-                        if not result.get("error")
-                        else None
+                        observe_usage(None, result)
+                        if guard and not result.get("error")
+                        else (
+                            (result.get("usage") or {}).get("total_tokens")
+                            if not result.get("error")
+                            else None
+                        )
                     )
                     # Commit reported usage before acknowledging completion;
                     # an immediate usage read must observe the completed call.
-                    self.server.ledger.settle(admitted, usage)
+                    if guard:
+                        guard.finish(guarded_attempt, known=True, usage=usage)
+                    else:
+                        self.server.ledger.settle(admitted, usage)
                     self.reply(200, result)
-            self.server.ledger.settle(admitted, usage)
+            if guard:
+                guard.finish(guarded_attempt, known=True, usage=usage)
+            else:
+                self.server.ledger.settle(admitted, usage)
         except (BrokenPipeError, ConnectionResetError):
             # RemoteDisconnected also inherits ConnectionResetError. Before
             # response headers this may be the engine, not the caller.
@@ -493,13 +669,17 @@ class Handler(BaseHTTPRequestHandler):
             if not streaming:
                 self.reply(503, {"error": {"code": "inference_unavailable"}})
         finally:
-            if admitted:
+            if guarded_attempt:
+                guard.finish(guarded_attempt, known=False)
+            elif admitted:
                 self.server.ledger.settle(admitted, None)
 
 
 if __name__ == "__main__":
     manifest = json.loads(Path(os.environ["PILOT_MANIFEST"]).read_text())
     validate_manifest(manifest, os.environ["PILOT_MODE"])
+    if manifest["mode"] == "qualification":
+        raise SystemExit("Use the registered, guarded qualification runner")
     ledger = Ledger(os.environ["PILOT_LEDGER"])
     ledger.project(
         manifest["project"], manifest["project_allowance"], manifest["concurrency"]

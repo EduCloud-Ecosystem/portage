@@ -15,6 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
+import qualification_fixtures as guarded_fixture
 
 spec = importlib.util.spec_from_file_location(
     "direct_gateway", Path(__file__).parents[1] / "integrations/ai_pilot/gateway.py"
@@ -147,6 +148,23 @@ def env(tmp_path):
     engine.foreign = start(foreign) + "/v1/chat/completions"
     config = manifest(start(engine))
     gateway.validate_manifest(config, "qualification")
+    # These general adapter regressions retain arbitrary prompts, retries and
+    # multiple members. The fixed qualification protocol has separate guard tests.
+    config["mode"] = "synthetic"
+    base = config["models"]["code_small"]
+    config["models"] = {
+        alias: dict(
+            base, operation=("embeddings" if alias == "embedding" else "chat/completions")
+        )
+        for alias in (
+            "classifier",
+            "code_small",
+            "code_large",
+            "research_synthesis",
+            "embedding",
+        )
+    }
+    gateway.validate_manifest(config, "synthetic")
     ledger = gateway.Ledger(tmp_path / "ledger.sqlite")
     ledger.project("project01", 10000, 2)
     ledger.project("project02", 10000, 2)
@@ -231,7 +249,7 @@ def test_identity_mapping_and_spoofing(env, stream):
         12,
     )
     body, request_id = env.engine.calls[0]
-    assert body["model"] == "synthetic-engine-model"
+    assert body["model"] == "code_small"
     assert request_id == row["id"] == headers["X-Portage-Request-Id"]
     assert not {"project", "user", "owner", "metadata", "api_base"} & body.keys()
     assert env.ledger.usage("project02")["committed"] == 0
@@ -482,62 +500,37 @@ def live_config(endpoint):
     "size,vram,memory_status", [(128, 0, "PASS"), (None, None, "FAIL"), (-1, 0, "FAIL")]
 )
 def test_live_protocol_against_synthetic_engine_only(
-    env, runner, monkeypatch, tmp_path, size, vram, memory_status
+    runner, monkeypatch, tmp_path, size, vram, memory_status
 ):
-    """Exercises runner instrumentation; this is NOT a real-capacity acceptance."""
-    config = live_config(env.service.manifest["models"]["code_small"]["endpoint"])
-    config["approved_capacity"]["ledger_path"] = str(tmp_path / "approved-ledger.sqlite")
-    env.engine.mode = "qualified"
-    monkeypatch.setattr(runner, "pin_engine", lambda _: {"evidence": "synthetic"})
-    monkeypatch.setattr(
-        runner,
-        "engine_json",
-        lambda *_: {
-            "models": [
-                {
-                    "digest": "b" * 64,
-                    "size": size,
-                    "size_vram": vram,
-                    "context_length": 2048,
-                }
-            ]
-        },
-    )
-    output = tmp_path / "runner"
-    output.mkdir()
-    report = {"runtime": dict.fromkeys(runner.LIVE_GATES, "NOT RUN")}
-    runner.live(config, output, report)
-    assert len(env.engine.calls) == len(report["attempts"]) == 16
+    """Actual guarded runner, fabricated responses; NOT real-capacity acceptance."""
+    fake = guarded_fixture.setup(tmp_path, monkeypatch, runner=runner)
+    fake.size, fake.vram = size, vram
+    report = fake.run()
+    assert len([url for url in fake.calls if url.endswith("/v1/chat/completions")]) == 16
+    assert len(report["attempts"]) == 16
     assert report["usage"] == {"committed": 192, "active": 0, "unresolved": 0}
     assert report["runtime"]["attempt_accounting"] == "PASS"
     assert report["runtime"]["bounded_task_quality"] == "PASS"
     assert report["runtime"]["resident_memory_samples"] == memory_status
-    assert report["runtime"]["engine_peak_memory"] == "NOT RUN"
-    assert report["runtime"]["engine_attempt_visibility"] == "NOT RUN"
-    assert report["runtime"]["token_reservation_bound"] == "NOT RUN"
-    assert report["runtime"]["operator_restart"] == "NOT RUN"
+    for key in (
+        "engine_peak_memory",
+        "engine_attempt_visibility",
+        "token_reservation_bound",
+        "operator_restart",
+    ):
+        assert report["runtime"][key] == "NOT RUN"
 
 
-def test_live_protocol_stops_after_ambiguous_usage(env, runner, monkeypatch, tmp_path):
-    config = live_config(env.service.manifest["models"]["code_small"]["endpoint"])
-    config["approved_capacity"]["ledger_path"] = str(tmp_path / "approved-ledger.sqlite")
-    env.engine.mode = "missing"
-    monkeypatch.setattr(runner, "pin_engine", lambda _: {"evidence": "synthetic"})
-    output = tmp_path / "runner"
-    output.mkdir()
-    report = {"runtime": dict.fromkeys(runner.LIVE_GATES, "NOT RUN")}
-    runner.live(config, output, report)
-    assert len(env.engine.calls) == 1
+def test_live_protocol_stops_after_ambiguous_usage(runner, monkeypatch, tmp_path):
+    fake = guarded_fixture.setup(tmp_path, monkeypatch, runner=runner, usage=None)
+    report = fake.run()
+    assert len([url for url in fake.calls if url.endswith("/v1/chat/completions")]) == 1
     assert report["runtime"]["attempt_accounting"] == "FAIL"
     assert report["usage"]["unresolved"] == 1
-    # A fresh evidence directory is not permission to reset admission state.
-    retry = tmp_path / "retry"
-    retry.mkdir()
-    with pytest.raises(ValueError, match="reconcile previous"):
-        runner.live(
-            config, retry, {"runtime": dict.fromkeys(runner.LIVE_GATES, "NOT RUN")}
-        )
-    assert len(env.engine.calls) == 1
+    before = list(fake.calls)
+    with pytest.raises(runner.gateway.Denied, match="held"):
+        fake.run("repeat")
+    assert fake.calls == before
 
 
 @pytest.mark.parametrize("change", ["no_approval", "synthetic", "deadline", "budget"])

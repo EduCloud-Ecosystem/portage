@@ -14,6 +14,7 @@ import json
 import re
 import secrets
 import sqlite3
+import stat
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -64,11 +65,48 @@ class Ledger:
                 request TEXT PRIMARY KEY, evidence TEXT NOT NULL, recorded REAL NOT NULL);
             """)
 
+    @classmethod
+    def open_existing(cls, path, *, identity=None):
+        """Open existing state without creating, migrating, or configuring it."""
+        resolved = Path(path).resolve(strict=True)
+        if str(resolved) != str(path) or not stat.S_ISREG(resolved.lstat().st_mode):
+            raise Denied("ledger_path_invalid")
+        current = (resolved.stat().st_dev, resolved.stat().st_ino)
+        if identity is not None and tuple(identity) != current:
+            raise Denied("ledger_identity_changed")
+        ledger = cls.__new__(cls)
+        ledger.path, ledger._existing_identity = str(resolved), current
+        with ledger.db() as db:
+            for table in (
+                "projects",
+                "members",
+                "credentials",
+                "requests",
+                "reconciliations",
+            ):
+                db.execute("SELECT 1 FROM " + table + " LIMIT 1")
+        return ledger
+
+    def _check_file(self):
+        if hasattr(self, "_existing_identity"):
+            path = Path(self.path)
+            info = path.lstat()
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or (info.st_dev, info.st_ino) != self._existing_identity
+                or path.resolve(strict=True) != path
+            ):
+                raise Denied("ledger_identity_changed")
+
     @contextmanager
     def db(self):
-        db = sqlite3.connect(self.path, timeout=15, isolation_level=None)
+        self._check_file()
+        existing = hasattr(self, "_existing_identity")
+        target = Path(self.path).as_uri() + "?mode=rw" if existing else self.path
+        db = sqlite3.connect(target, uri=existing, timeout=15, isolation_level=None)
         db.row_factory = sqlite3.Row
         try:
+            self._check_file()
             yield db
         finally:
             db.close()
@@ -250,34 +288,47 @@ class Ledger:
     def admit(
         self, token, model, reserved, asserted_subject=None, *, admission_check=None
     ):
-        positive(reserved)
         with self.transaction() as db:
-            project, member = self._authenticate(db, token, asserted_subject)
-            for scope, subject in ((project, None), (member, member["subject"])):
-                usage = self._usage(db, project["id"], subject)
-                if usage["committed"] + reserved > scope["allowance"]:
-                    raise Denied("allowance_exhausted", 429)
-                if usage["active"] >= scope["concurrency"]:
-                    raise Denied("concurrency_exhausted", 429)
-            request = secrets.token_hex(16)
-            # BEGIN IMMEDIATE may wait for another writer. Recheck a finite
-            # approval under that lock, immediately before creating liability.
-            if admission_check is not None:
-                admission_check()
-            db.execute(
-                "INSERT INTO requests VALUES(?,?,?,?,?,?,?,?)",
-                (
-                    request,
-                    project["id"],
-                    member["subject"],
-                    model,
-                    reserved,
-                    None,
-                    "pending",
-                    time.time(),
-                ),
+            return self._admit(
+                db,
+                token,
+                model,
+                reserved,
+                asserted_subject,
+                admission_check=admission_check,
             )
-            return request
+
+    def _admit(
+        self, db, token, model, reserved, asserted_subject=None, *, admission_check=None
+    ):
+        """Admission inside an existing write transaction; shared with qualification."""
+        positive(reserved)
+        project, member = self._authenticate(db, token, asserted_subject)
+        for scope, subject in ((project, None), (member, member["subject"])):
+            usage = self._usage(db, project["id"], subject)
+            if usage["committed"] + reserved > scope["allowance"]:
+                raise Denied("allowance_exhausted", 429)
+            if usage["active"] >= scope["concurrency"]:
+                raise Denied("concurrency_exhausted", 429)
+        request = secrets.token_hex(16)
+        # BEGIN IMMEDIATE may wait for another writer. Recheck a finite
+        # approval under that lock, immediately before creating liability.
+        if admission_check is not None:
+            admission_check()
+        db.execute(
+            "INSERT INTO requests VALUES(?,?,?,?,?,?,?,?)",
+            (
+                request,
+                project["id"],
+                member["subject"],
+                model,
+                reserved,
+                None,
+                "pending",
+                time.time(),
+            ),
+        )
+        return request
 
     def settle(self, request: str, usage: int | None):
         if usage is not None and (type(usage) is not int or usage < 0):
