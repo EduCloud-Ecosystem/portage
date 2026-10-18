@@ -478,7 +478,12 @@ def live_config(endpoint):
     return config
 
 
-def test_live_protocol_against_synthetic_engine_only(env, runner, monkeypatch, tmp_path):
+@pytest.mark.parametrize(
+    "size,vram,memory_status", [(128, 0, "PASS"), (None, None, "FAIL"), (-1, 0, "FAIL")]
+)
+def test_live_protocol_against_synthetic_engine_only(
+    env, runner, monkeypatch, tmp_path, size, vram, memory_status
+):
     """Exercises runner instrumentation; this is NOT a real-capacity acceptance."""
     config = live_config(env.service.manifest["models"]["code_small"]["endpoint"])
     config["approved_capacity"]["ledger_path"] = str(tmp_path / "approved-ledger.sqlite")
@@ -491,8 +496,8 @@ def test_live_protocol_against_synthetic_engine_only(env, runner, monkeypatch, t
             "models": [
                 {
                     "digest": "b" * 64,
-                    "size": 128,
-                    "size_vram": 0,
+                    "size": size,
+                    "size_vram": vram,
                     "context_length": 2048,
                 }
             ]
@@ -506,6 +511,7 @@ def test_live_protocol_against_synthetic_engine_only(env, runner, monkeypatch, t
     assert report["usage"] == {"committed": 192, "active": 0, "unresolved": 0}
     assert report["runtime"]["attempt_accounting"] == "PASS"
     assert report["runtime"]["bounded_task_quality"] == "PASS"
+    assert report["runtime"]["resident_memory_samples"] == memory_status
     assert report["runtime"]["engine_peak_memory"] == "NOT RUN"
     assert report["runtime"]["engine_attempt_visibility"] == "NOT RUN"
     assert report["runtime"]["token_reservation_bound"] == "NOT RUN"
@@ -583,3 +589,27 @@ def test_model_pin_mismatches_fail_without_generation(runner, monkeypatch, misma
     with pytest.raises(ValueError):
         runner.pin_engine(config)
     assert set(calls) <= {"/api/version", "/api/tags", "/api/show"}
+
+
+@pytest.mark.parametrize(
+    "case,expected",
+    [
+        ("<testcase name='passed'/>", "PASS"),
+        ("<testcase name='skipped'><skipped/></testcase>", "FAIL"),
+        ("<testcase name='failed'><failure/></testcase>", "FAIL"),
+        ("<testcase name='error'><error/></testcase>", "FAIL"),
+        ("", "FAIL"),
+    ],
+)
+def test_controls_require_every_selected_case_to_pass(
+    runner, monkeypatch, tmp_path, case, expected
+):
+    def completed(*_args, **_kwargs):
+        (tmp_path / "controls.xml").write_text(f"<testsuite>{case}</testsuite>")
+        return runner.subprocess.CompletedProcess([], 0, "", "")
+
+    monkeypatch.setattr(runner.subprocess, "run", completed)
+    result = runner.controls(tmp_path)
+    assert result["status"] == expected
+    if "skipped" in case:
+        assert result["cases"][0]["status"] == "NOT RUN"

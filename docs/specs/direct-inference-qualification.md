@@ -45,6 +45,8 @@ It writes `record.json`, `controls.xml` and `controls.log`, with source hashes a
 per-control PASS/FAIL/NOT RUN. Without a manifest it makes **no real engine
 request** and leaves every runtime gate NOT RUN. Tests of the live runner also
 use a fake engine; their durations/memory fixtures are not model benchmarks.
+Every selected control must pass before the runner can enter the live path;
+skipped controls remain NOT RUN and fail the overall control gate.
 
 Controls cover both transports; user/project identity; application scope;
 spoofed headers/body fields; forbidden aliases, destinations, redirects and
@@ -121,7 +123,8 @@ not an SLA or research competence. Inspect per-cell rows: two admitted clients
 do not prove two engine workers execute simultaneously.
 
 `GET /api/ps` samples resident model/VRAM sizes after batches. These are
-engine-reported observations, **not OS/GPU peak memory measurements**. Capture
+engine-reported observations, **not OS/GPU peak memory measurements**. The sample
+gate is marked FAIL when returned size fields are missing or invalid. Capture
 independent peak measurements and corroborate settings on the approved host.
 Retain engine request tracing to prove internal attempts do not bypass Portage.
 Prove the reservation bound against the pinned tokenizer/template, including

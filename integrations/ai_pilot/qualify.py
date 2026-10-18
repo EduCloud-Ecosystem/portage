@@ -105,7 +105,13 @@ def controls(output):
                 status = "NOT RUN"
             cases.append({"control": case.attrib["name"], "status": status})
     return {
-        "status": "PASS" if result.returncode == 0 and cases else "FAIL",
+        "status": (
+            "PASS"
+            if result.returncode == 0
+            and cases
+            and all(case["status"] == "PASS" for case in cases)
+            else "FAIL"
+        ),
         "evidence_class": "synthetic loopback HTTP; no model",
         "cases": cases,
     }
@@ -403,7 +409,17 @@ def live(config, output, report):
             else "FAIL"
         )
         if memory:
-            report["runtime"]["resident_memory_samples"] = "PASS"
+            report["runtime"]["resident_memory_samples"] = (
+                "PASS"
+                if all(
+                    type(m["size"]) is int
+                    and m["size"] > 0
+                    and type(m["size_vram"]) is int
+                    and m["size_vram"] >= 0
+                    for m in memory
+                )
+                else "FAIL"
+            )
             report["runtime"]["effective_context"] = (
                 "PASS"
                 if all(m["context_length"] == model["context_tokens"] for m in memory)
