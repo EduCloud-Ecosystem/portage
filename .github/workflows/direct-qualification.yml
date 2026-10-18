@@ -4,9 +4,12 @@ on:
     paths:
       - integrations/ai_pilot/**
       - src/portage/pilot_ledger.py
+      - src/portage/qualification_guard.py
       - tests/test_pilot_*.py
       - tests/test_direct_qualification.py
       - tests/test_qualification_expiry.py
+      - tests/test_qualification_guard.py
+      - tests/qualification_fixtures.py
       - .github/workflows/direct-qualification.yml
 permissions:
   contents: read
@@ -20,6 +23,10 @@ jobs:
       - run: uv run python integrations/ai_pilot/qualify.py --output .qualification/ci
       - name: Approval-expiry regressions (separate synthetic evidence)
         run: uv run pytest tests/test_qualification_expiry.py --junitxml=.qualification/expiry-ci/controls.xml
+      - name: Durable approval regressions (in-memory transport only)
+        run: |
+          mkdir -p .qualification/durable-ci
+          uv run pytest tests/test_qualification_guard.py --basetemp=.qualification/durable-ci/tmp --junitxml=.qualification/durable-ci/controls.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -30,3 +37,8 @@ jobs:
         with:
           name: synthetic-expiry-regressions
           path: .qualification/expiry-ci
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetic-durable-approval-regressions
+          path: .qualification/durable-ci/controls.xml

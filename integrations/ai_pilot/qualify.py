@@ -14,19 +14,24 @@ import json
 import math
 import platform
 import re
-import secrets
 import subprocess
 import sys
-import threading
 import time
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import gateway
+from qualification_guard import (
+    BATCHES,
+    INFERENCE,
+    QualificationGuard,
+    observe_usage,
+    protected_file,
+    unique_json,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 TASKS = (
@@ -65,6 +70,10 @@ def source_identity():
         "integrations/ai_pilot/gateway.py",
         "integrations/ai_pilot/qualify.py",
         "src/portage/pilot_ledger.py",
+        "src/portage/qualification_guard.py",
+        "tests/test_qualification_guard.py",
+        "tests/qualification_fixtures.py",
+        "tests/test_qualification_expiry.py",
         "tests/test_direct_qualification.py",
         "tests/test_pilot_gateway.py",
         "tests/test_pilot_ledger.py",
@@ -87,6 +96,9 @@ def controls(output):
             "tests/test_direct_qualification.py",
             "tests/test_pilot_gateway.py",
             "tests/test_pilot_ledger.py",
+            "tests/test_qualification_guard.py",
+            "tests/test_qualification_expiry.py",
+            f"--basetemp={output / 'tmp'}",
             f"--junitxml={output / 'controls.xml'}",
         ],
         cwd=ROOT,
@@ -186,20 +198,21 @@ def engine_json(origin, path, body=None):
         return json.load(response)
 
 
-def pin_engine(config):
+def pin_engine(config, fetch=None):
+    fetch = fetch or engine_json
     model = config["models"]["code_small"]
     origin, name = model["endpoint"], model["upstream_model"]
-    version = engine_json(origin, "/api/version").get("version")
+    version = fetch(origin, "/api/version").get("version")
     if version != config["approved_capacity"]["engine_version"]:
         raise ValueError("engine version differs from approved manifest")
-    tags = engine_json(origin, "/api/tags").get("models", [])
+    tags = fetch(origin, "/api/tags").get("models", [])
     candidates = [row for row in tags if row.get("name") == name]
     if len(candidates) != 1:
         raise ValueError("exact approved model must already be installed")
     installed = candidates[0]
     if installed.get("digest") != model["revision"] or installed.get("size", 0) <= 0:
         raise ValueError("installed artifact digest or local size disagrees")
-    shown = engine_json(origin, "/api/show", {"model": name})
+    shown = fetch(origin, "/api/show", {"model": name})
     if any(shown.get(k) or installed.get(k) for k in ("remote_host", "remote_model")):
         raise ValueError("cloud-backed models are excluded")
     if digest(shown.get("template", "").encode()) != model["template_sha256"]:
@@ -215,181 +228,169 @@ def pin_engine(config):
     }
 
 
-class SyntheticAuthority(BaseHTTPRequestHandler):
-    def log_message(self, *_):
-        pass
-
-    def do_GET(self):
-        active = self.path == "/internal/member/qualifier01"
-        body = json.dumps({"active": active, "project": self.server.project}).encode()
-        self.send_response(200)
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-
-def start(server):
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    return f"http://127.0.0.1:{server.server_port}"
-
-
-def measured_call(url, token, task, stream, timeout):
-    name, prompt, expected = task
+def guarded_call(guard, slot, authority_key):
+    item = INFERENCE[slot]
+    task, stream = item["task"], item["stream"]
     begin = time.monotonic()
-    row = {"task": name, "stream": stream, "availability": "FAIL", "quality": "NOT RUN"}
-    content, first = "", None
-    request = urllib.request.Request(
-        url + "/v1/chat/completions",
-        data=json.dumps(
-            {
-                "model": "code_small",
-                "stream": stream,
-                "messages": [{"role": "user", "content": prompt}],
-            }
-        ).encode(),
-        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
-    )
+    row = {
+        "task": task[0],
+        "stream": stream,
+        "availability": "FAIL",
+        "quality": "NOT RUN",
+    }
+    attempt, request_id, usage = None, None, None
+    content, first, complete = "", None, False
     try:
-        with gateway.open_once(request, timeout=timeout + 10) as response:
-            row["request_id"] = response.headers.get("X-Portage-Request-Id")
-            complete = not stream
+        for phase in ("pre", "post"):
+            gateway.qualified_authority(guard, "inference", slot, phase, authority_key)
+        body = {
+            "model": "code_small",
+            "messages": [{"role": "user", "content": task[1]}],
+            "stream": stream,
+        }
+        attempt, request_id = guard.admit("inference", slot, body=body)
+        row["request_id"] = request_id
+        outgoing, _ = gateway.prepare_request(
+            body, guard.manifest["models"], "chat/completions"
+        )
+        model = guard.manifest["models"]["code_small"]
+        outgoing["model"] = model["upstream_model"]
+        request = urllib.request.Request(
+            model["endpoint"].rstrip("/") + "/v1/chat/completions",
+            data=json.dumps(outgoing).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "X-Portage-Request-Id": request_id,
+            },
+        )
+        with gateway.inference_attempt(
+            request,
+            model["request_timeout_seconds"],
+            approval_window=guard,
+            dispatch_check=lambda: guard.claim(attempt),
+        ) as response:
             if stream:
-                for line in response:
+                while line := response.readline(262145):
+                    if len(line) > 262144:
+                        raise ValueError("event too large")
                     if line.strip() == b"data: [DONE]":
                         complete = True
                         break
                     if line.startswith(b"data: "):
-                        chunk = json.loads(line[6:])
+                        chunk = unique_json(line[6:])
+                        if chunk.get("error"):
+                            raise ValueError("stream failed")
+                        usage = observe_usage(usage, chunk)
                         for choice in chunk.get("choices", []):
                             text = choice.get("delta", {}).get("content") or ""
                             if text and first is None:
                                 first = time.monotonic() - begin
                             content += text
             else:
-                result = json.load(response)
+                raw = response.read(262145)
+                if len(raw) > 262144:
+                    raise ValueError("response too large")
+                result = unique_json(raw)
+                if result.get("error"):
+                    raise ValueError("completion failed")
                 content = result["choices"][0]["message"]["content"]
-            if complete and content:
-                row["availability"] = "PASS"
-                row["quality"] = "PASS" if content.strip() == expected else "FAIL"
-            row["output_sha256"] = digest(content.encode())
-    except (OSError, ValueError, KeyError, IndexError, TypeError) as error:
-        # No payloads, credentials or upstream response/error bodies in evidence.
+                usage = observe_usage(None, result)
+                complete = True
+        if complete and content:
+            row["availability"] = "PASS"
+            row["quality"] = "PASS" if content.strip() == task[2] else "FAIL"
+        row["output_sha256"] = digest(content.encode())
+    except Exception as error:
         row["error_type"] = type(error).__name__
+    finally:
+        if attempt:
+            guard.finish(attempt, known=complete, usage=usage)
     row["seconds"] = time.monotonic() - begin
     row["first_content_seconds"] = first
     return row
 
 
-def live(config, output, report):
-    window = gateway.ApprovalWindow(validate_live(config))
+def live(config, output, report, *, guard=None, token=None, authority_key=None):
+    if not isinstance(guard, QualificationGuard) or not token or not authority_key:
+        raise ValueError("registered guard and existing credentials required")
+    if guard.manifest != config:
+        raise ValueError("guard manifest mismatch")
+    guard.acquire(token)
+    ledger, project = guard.ledger, config["project"]
     model = config["models"]["code_small"]
+    rows, memory = [], []
 
     def batch_fits():
-        if window.remaining() < model["request_timeout_seconds"] + 10:
+        guard.check()
+        if guard.remaining() < model["request_timeout_seconds"] + 10:
             report["stop_reason"] = "approval_window_insufficient"
             return False
         return True
 
-    report["manifest_sha256"] = digest(json.dumps(config, sort_keys=True).encode())
-    report["model"] = config["models"]["code_small"]
-    # Pin checks are metadata-only. They do not load or download a model.
-    report["observed_model"] = pin_engine(config)
-    report["runtime"]["model_identity"] = "PASS"
-    if not batch_fits():
-        return
-    # Separate evidence directories must not reset the approved run's liability.
-    ledger = gateway.Ledger(config["approved_capacity"]["ledger_path"])
-    project = config["project"]
-    ledger.project(project, config["project_allowance"], 2)
-    if ledger.usage(project)["active"]:
-        raise ValueError("reconcile previous pending/unknown work before further runs")
-    ledger.member(project, "qualifier01", config["participant_allowance"], 2)
-    token = ledger.issue(project, subject="qualifier01", lifetime=1800)
-    authority = ThreadingHTTPServer(("127.0.0.1", 0), SyntheticAuthority)
-    authority.project = project
-    service = gateway.Gateway(
-        ("127.0.0.1", 0),
-        ledger,
-        config,
-        secrets.token_hex(32),
-        "local-qualification",
-        start(authority),
-        secrets.token_hex(32),
-        approval_window=window,
-    )
-    url = start(service)
-    rows, memory = [], []
+    def pin(prefix):
+        def fetch(_origin, path, _body=None):
+            return gateway.qualified_metadata(
+                guard, prefix + "." + path.rsplit("/", 1)[-1], authority_key
+            )
+
+        return pin_engine(config, fetch=fetch)
+
     try:
-        for concurrency in (1, 2):
-            for repetition in range(2):
-                jobs = [(task, stream) for task in TASKS for stream in (False, True)]
-                with concurrent.futures.ThreadPoolExecutor(
-                    max_workers=concurrency
-                ) as pool:
-                    for offset in range(0, len(jobs), concurrency):
-                        # No queue crosses the deadline. Stop after any ambiguous call.
-                        if not batch_fits():
-                            return
-                        try:
-                            pin_engine(config)
-                        except Exception:
-                            report["runtime"]["model_identity"] = "FAIL"
-                            raise
-                        # Metadata can consume the remaining window. The gateway
-                        # also checks each admission and actual engine dispatch.
-                        if not batch_fits():
-                            return
-                        futures = [
-                            pool.submit(
-                                measured_call,
-                                url,
-                                token,
-                                task,
-                                stream,
-                                model["request_timeout_seconds"],
-                            )
-                            for task, stream in jobs[offset : offset + concurrency]
-                        ]
-                        for future in futures:
-                            row = future.result()
-                            row.update(concurrency=concurrency, repetition=repetition)
-                            rows.append(row)
-                        # Streaming delivery may precede the final ledger write by a
-                        # few milliseconds. Wait for settlement; never redispatch.
-                        wait_until = time.monotonic() + 2
-                        while time.monotonic() < wait_until:
-                            with ledger.db() as db:
-                                pending = db.execute(
-                                    "SELECT count(*) FROM requests WHERE state='pending'"
-                                ).fetchone()[0]
-                            if not pending:
-                                break
-                            time.sleep(0.01)
-                        with ledger.db() as db:
-                            attempts = {
-                                r["id"]: dict(r)
-                                for r in db.execute(
-                                    "SELECT id,state,reserved,actual FROM requests"
-                                )
-                            }
-                        for row in rows:
-                            row["accounting"] = attempts.get(row.get("request_id"))
-                        save(output / "attempts.json", rows)
-                        if ledger.usage(project)["active"]:
-                            return
-                        if any(row["availability"] != "PASS" for row in rows):
-                            return
-                        sample = engine_json(model["endpoint"], "/api/ps")
-                        for resident in sample.get("models", []):
-                            if resident.get("digest") == model["revision"]:
-                                memory.append(
-                                    {
-                                        k: resident.get(k)
-                                        for k in ("size", "size_vram", "context_length")
-                                    }
-                                )
+        validate_live(config)
+        report["manifest_sha256"] = digest(json.dumps(config, sort_keys=True).encode())
+        report["model"] = model
+        if not batch_fits():
+            return
+        report["observed_model"] = pin("initial")
+        report["runtime"]["model_identity"] = "PASS"
+        for batch, slots in BATCHES:
+            if not batch_fits():
+                return
+            try:
+                pin(batch)
+            except Exception:
+                report["runtime"]["model_identity"] = "FAIL"
+                raise
+            if not batch_fits():
+                return
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(slots)) as pool:
+                futures = [
+                    pool.submit(guarded_call, guard, slot, authority_key)
+                    for slot in slots
+                ]
+                for slot, future in zip(slots, futures, strict=True):
+                    row = future.result()
+                    row.update(
+                        concurrency=INFERENCE[slot]["concurrency"],
+                        repetition=INFERENCE[slot]["repetition"],
+                    )
+                    rows.append(row)
+            with ledger.db() as db:
+                attempts = {
+                    r["id"]: dict(r)
+                    for r in db.execute(
+                        "SELECT id,state,reserved,actual FROM requests WHERE project=?",
+                        (project,),
+                    )
+                }
+            for row in rows:
+                row["accounting"] = attempts.get(row.get("request_id"))
+            save(output / "attempts.json", rows)
+            if ledger.usage(project)["active"] or any(
+                row["availability"] != "PASS" for row in rows
+            ):
+                return
+            sample = gateway.qualified_metadata(guard, batch + ".ps", authority_key)
+            for resident in sample.get("models", []):
+                if resident.get("digest") == model["revision"]:
+                    memory.append(
+                        {
+                            k: resident.get(k)
+                            for k in ("size", "size_vram", "context_length")
+                        }
+                    )
     finally:
+        guard.close()
         report["attempts"] = rows
         report["usage"] = ledger.usage(project)
         report["resident_samples"] = memory
@@ -439,10 +440,6 @@ def live(config, output, report):
                 if all(m["context_length"] == model["context_tokens"] for m in memory)
                 else "FAIL"
             )
-        ledger.disable_credential(token)
-        for server in (service, authority):
-            server.shutdown()
-            server.server_close()
 
 
 def main():
@@ -450,9 +447,16 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--execute-approved", action="store_true")
+    parser.add_argument("--registry", type=Path)
+    parser.add_argument("--registry-sha256")
+    parser.add_argument("--credential-file", type=Path)
     args = parser.parse_args()
     if bool(args.manifest) != args.execute_approved:
         parser.error("live mode requires both --manifest and --execute-approved")
+    if args.execute_approved and not all(
+        (args.registry, args.registry_sha256, args.credential_file)
+    ):
+        parser.error("execution requires pinned registry and pre-issued credential file")
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     output.chmod(0o700)
@@ -470,7 +474,19 @@ def main():
         if report["controls"]["status"] == "PASS" and args.manifest:
             config = json.loads(args.manifest.read_text())
             save(output / "manifest.json", config)
-            live(config, output, report)
+            guard = QualificationGuard(args.registry, args.registry_sha256, config)
+            protected_file(args.credential_file)
+            if args.credential_file.stat().st_mode & 0o077:
+                raise ValueError("credential file must be private to the operator")
+            credentials = unique_json(args.credential_file.read_text())
+            live(
+                config,
+                output,
+                report,
+                guard=guard,
+                token=credentials["participant_token"],
+                authority_key=credentials["authority_token"],
+            )
         elif not args.manifest:
             report["reason"] = (
                 "No approved capacity manifest supplied; no engine contacted"

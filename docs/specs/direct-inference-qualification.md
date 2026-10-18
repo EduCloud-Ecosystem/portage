@@ -75,7 +75,8 @@ capabilities. Maximum accepted bounds are 128 output tokens, 4,096 per request,
 | Context | Approved effective context, checked against `GET /api/ps` during the run |
 | Token bounds | Fixed output limit and conservative byte-plus-framing reservation; tokenizer proof is a separate gate |
 | CPU/memory | Actual process/container limits and observation procedure; gateway metadata does not enforce engine resources |
-| Ledger | Absolute path on local disk outside per-run evidence directories; reuse across retries/runs |
+| Ledger | Existing canonical local ledger outside evidence directories; explicit offline migration and registration; no automatic provisioning |
+| Durable approval | Protected operator registry and external SHA256 pin, immutable capacity-budget ID, pre-issued participant/authority credentials and original deadlines |
 | Local-only/egress | Evidence of disabled cloud routing and blocked external egress; loopback alone does not prove locality |
 | Absolute expiry | Timezone-aware deadline within 30 minutes, allowing time for synthetic controls first |
 
@@ -96,18 +97,27 @@ references are not qualification evidence for any installed engine.
 
 ## Frozen bounded workload
 
-After existing capacity/model approval is recorded:
+After existing capacity/model approval and the explicit offline registration in
+[Durable local qualification approval](durable-qualification-approval.md) are
+recorded, the future authorized invocation also requires these inputs:
 
 ```sh
 uv run python integrations/ai_pilot/qualify.py \
   --manifest .qualification/approved-manifest.json \
+  --registry /protected/operator/qualification-registry.json \
+  --registry-sha256 "$OPERATOR_REGISTRY_SHA256" \
+  --credential-file /protected/operator/qualification-credentials.json \
   --execute-approved --output .qualification/direct-01
 ```
 
 Keep the manifest outside the new output directory. Only synthetic prompts enter
 the engine: integer arithmetic and selecting a color from a fixed list. Two
 tasks × two transport modes × concurrency cells 1 and 2 × two repetitions =
-**16 maximum inference attempts**, each admitted through Portage. There are no
+**16 maximum inference attempts per capacity approval**, each admitted through
+Portage. The same approval also has 51 fixed engine-metadata slots and 83
+membership-authority slots. A completed, interrupted, held or expired approval
+cannot start another invocation; repeated invocations refuse before any contact.
+There are no
 unmetered warmups/retries. Do not call the first request a cold start without
 observing engine residency first. Metadata reads are not inference. Batches stop
 before expiry and after unavailable or ambiguously accounted work. A client

@@ -5,11 +5,11 @@ import concurrent.futures
 import threading
 import time
 import urllib.request
-from contextlib import contextmanager
-from datetime import UTC, datetime
+from contextlib import contextmanager, suppress
 from types import SimpleNamespace
 
 import pytest
+import qualification_fixtures as guarded_fixture
 import test_direct_qualification as direct
 
 env, runner = direct.env, direct.runner
@@ -36,33 +36,23 @@ class Clock:
 
 @pytest.mark.parametrize("slow_pin,seconds", [(1, 31), (2, 31), (2, 20)])
 def test_slow_metadata_cannot_dispatch_without_remaining_window(
-    env, runner, monkeypatch, tmp_path, slow_pin, seconds
+    runner, monkeypatch, tmp_path, slow_pin, seconds
 ):
-    clock = Clock()
-    monkeypatch.setattr(runner, "time", clock)
-    monkeypatch.setattr(runner.gateway, "time", clock)
-    config = live_config(env.service.manifest["models"]["code_small"]["endpoint"])
-    config["approved_capacity"].update(
-        ledger_path=str(tmp_path / "approved.sqlite"),
-        deadline_utc=datetime.fromtimestamp(clock.wall + 30, UTC).isoformat(),
-    )
+    fake = guarded_fixture.setup(tmp_path, monkeypatch, runner=runner, seconds=30)
     pins = []
 
-    def slow_metadata(_):
-        pins.append(clock.time())
-        if len(pins) == slow_pin:
-            clock.advance(seconds)
-        return {"evidence": "synthetic metadata only"}
+    def slow_metadata(request):
+        if request.full_url.endswith("/api/show"):
+            pins.append(True)
+            if len(pins) == slow_pin:
+                fake.clock.advance(seconds)
 
-    monkeypatch.setattr(runner, "pin_engine", slow_metadata)
-    monkeypatch.setattr(runner, "engine_json", lambda *_: {"models": []})
-    report = {"runtime": dict.fromkeys(runner.LIVE_GATES, "NOT RUN")}
-    runner.live(config, tmp_path, report)
+    fake.hook = slow_metadata
+    with suppress(runner.gateway.Denied):
+        fake.run()
     assert len(pins) == slow_pin
-    assert env.engine.calls == []
-    assert report.get("attempts", []) == []
-    ledger = runner.gateway.Ledger(config["approved_capacity"]["ledger_path"])
-    assert ledger.usage(config["project"]) == {
+    assert not any(url.endswith("/v1/chat/completions") for url in fake.calls)
+    assert fake.ledger.usage("qualify01") == {
         "committed": 0,
         "active": 0,
         "unresolved": 0,
@@ -294,23 +284,29 @@ def test_slow_connect_also_respects_request_deadline_without_approval(monkeypatc
     assert calls == [] and connections[0].closed
 
 
-def test_direct_qualification_gateway_inherits_manifest_expiry(monkeypatch):
-    clock, _ = approved_window(monkeypatch)
-    config = live_config("http://127.0.0.1:1")
-    config["approved_capacity"]["deadline_utc"] = datetime.fromtimestamp(
-        clock.wall + 30, UTC
-    ).isoformat()
-    service = gateway.Gateway(("127.0.0.1", 0), None, config, "", "", "", "")
-    try:
-        clock.advance(31)
-        with pytest.raises(gateway.Denied, match="approval_expired"):
-            service.approval_window.check()
-    finally:
-        service.server_close()
+def test_direct_qualification_gateway_inherits_manifest_expiry(monkeypatch, tmp_path):
+    fake = guarded_fixture.setup(tmp_path, monkeypatch)
+    guard = fake.guard().acquire(fake.token)
+    monkeypatch.setattr(gateway.ThreadingHTTPServer, "__init__", lambda *_: None)
+    service = gateway.Gateway(
+        ("127.0.0.1", 0),
+        guard.ledger,
+        fake.config,
+        "",
+        "",
+        guard.binding["authority_url"],
+        "",
+        qualification_guard=guard,
+    )
+    assert service.approval_window is guard
+    fake.clock.advance(601)
+    with pytest.raises(gateway.Denied, match="approval_expired"):
+        service.approval_window.check()
+    guard.close()
 
 
 def test_direct_qualification_gateway_requires_deadline():
     config = live_config("http://127.0.0.1:1")
     del config["approved_capacity"]
-    with pytest.raises(ValueError, match="approved deadline"):
+    with pytest.raises(ValueError, match="registered approval guard"):
         gateway.Gateway(("127.0.0.1", 0), None, config, "", "", "", "")
