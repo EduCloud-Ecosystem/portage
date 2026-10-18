@@ -282,12 +282,22 @@ def measured_call(url, token, task, stream, timeout):
 
 
 def live(config, output, report):
-    deadline = validate_live(config)
+    window = gateway.ApprovalWindow(validate_live(config))
+    model = config["models"]["code_small"]
+
+    def batch_fits():
+        if window.remaining() < model["request_timeout_seconds"] + 10:
+            report["stop_reason"] = "approval_window_insufficient"
+            return False
+        return True
+
     report["manifest_sha256"] = digest(json.dumps(config, sort_keys=True).encode())
     report["model"] = config["models"]["code_small"]
     # Pin checks are metadata-only. They do not load or download a model.
     report["observed_model"] = pin_engine(config)
     report["runtime"]["model_identity"] = "PASS"
+    if not batch_fits():
+        return
     # Separate evidence directories must not reset the approved run's liability.
     ledger = gateway.Ledger(config["approved_capacity"]["ledger_path"])
     project = config["project"]
@@ -306,10 +316,10 @@ def live(config, output, report):
         "local-qualification",
         start(authority),
         secrets.token_hex(32),
+        approval_window=window,
     )
     url = start(service)
     rows, memory = [], []
-    model = config["models"]["code_small"]
     try:
         for concurrency in (1, 2):
             for repetition in range(2):
@@ -319,13 +329,17 @@ def live(config, output, report):
                 ) as pool:
                     for offset in range(0, len(jobs), concurrency):
                         # No queue crosses the deadline. Stop after any ambiguous call.
-                        if time.time() + model["request_timeout_seconds"] + 10 > deadline:
+                        if not batch_fits():
                             return
                         try:
                             pin_engine(config)
                         except Exception:
                             report["runtime"]["model_identity"] = "FAIL"
                             raise
+                        # Metadata can consume the remaining window. The gateway
+                        # also checks each admission and actual engine dispatch.
+                        if not batch_fits():
+                            return
                         futures = [
                             pool.submit(
                                 measured_call,

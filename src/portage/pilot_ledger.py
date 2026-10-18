@@ -247,7 +247,9 @@ class Ledger:
         with self.db() as db:
             return self._usage(db, project, subject)
 
-    def admit(self, token, model, reserved, asserted_subject=None):
+    def admit(
+        self, token, model, reserved, asserted_subject=None, *, admission_check=None
+    ):
         positive(reserved)
         with self.transaction() as db:
             project, member = self._authenticate(db, token, asserted_subject)
@@ -258,6 +260,10 @@ class Ledger:
                 if usage["active"] >= scope["concurrency"]:
                     raise Denied("concurrency_exhausted", 429)
             request = secrets.token_hex(16)
+            # BEGIN IMMEDIATE may wait for another writer. Recheck a finite
+            # approval under that lock, immediately before creating liability.
+            if admission_check is not None:
+                admission_check()
             db.execute(
                 "INSERT INTO requests VALUES(?,?,?,?,?,?,?,?)",
                 (

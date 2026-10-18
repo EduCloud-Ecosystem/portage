@@ -113,6 +113,23 @@ observing engine residency first. Metadata reads are not inference. Batches stop
 before expiry and after unavailable or ambiguously accounted work. A client
 disconnect does not prove engine termination; its budget and slot remain held.
 
+The runner rechecks remaining time after each metadata pin and before each
+batch. The gateway checks every request after authority verification, inside
+the ledger write transaction immediately before reservation, and after connect
+immediately before engine dispatch. An elapsed-time deadline prevents a wall
+clock rollback from extending the approval. The transport timeout is capped by
+the remaining approved window. Expiry before reservation creates no liability;
+expiry after reservation retains unknown usage and its concurrency slot, even
+when dispatch was refused. Socket interruption does not prove that already
+admitted engine work has stopped; reconciliation still requires evidence.
+
+Separate fake-clock and loopback regressions live in
+`tests/test_qualification_expiry.py` and CI's `synthetic-expiry-regressions`
+artifact. They supplement the frozen 95-control record without changing it or
+closing any of the 12 actual-runtime NOT RUN gates. The separate
+[expiry regression record](../qualifications/2026-10-17-expiry-controls.json)
+retains the failing baseline and fixed-source hashes.
+
 `attempts.json` links request/ledger identity, latency, streaming first-content
 time, availability, exact-output quality and output hash. The private SQLite
 ledger retains liabilities across runs, even with a new evidence directory.

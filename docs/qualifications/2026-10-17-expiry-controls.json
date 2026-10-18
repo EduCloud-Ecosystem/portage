@@ -1,0 +1,158 @@
+{
+  "baseline": {
+    "cases": [
+      {
+        "control": "test_slow_metadata_cannot_dispatch_without_remaining_window[1-31]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_slow_metadata_cannot_dispatch_without_remaining_window[2-31]",
+        "status": "FAIL"
+      },
+      {
+        "control": "test_slow_metadata_cannot_dispatch_without_remaining_window[2-20]",
+        "status": "FAIL"
+      }
+    ],
+    "command": "uv run pytest tests/test_qualification_expiry.py -k slow_metadata_cannot_dispatch_without_remaining_window",
+    "result": "2 failures, 1 pass; each failing case dispatched one synthetic request",
+    "revision": "577fdb9a40239b98ba63dcd4676cb8e5213b23f4"
+  },
+  "checks": {
+    "diff_whitespace": "PASS",
+    "generated_profiles": {
+      "scale1.example": "PASS",
+      "scale2.educloud.staff": "PASS",
+      "scale2.educloud.student": "PASS"
+    },
+    "independent_read_only_review": "No blocking findings",
+    "ruff": "PASS"
+  },
+  "controls": {
+    "cases": [
+      {
+        "control": "test_slow_metadata_cannot_dispatch_without_remaining_window[1-31]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_slow_metadata_cannot_dispatch_without_remaining_window[2-31]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_slow_metadata_cannot_dispatch_without_remaining_window[2-20]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_expired_window_never_reopens[elapsed]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_expired_window_never_reopens[rollback]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_expired_window_never_reopens[forward_then_rollback]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_authority_delay_cannot_admit_after_expiry",
+        "status": "PASS"
+      },
+      {
+        "control": "test_sqlite_lock_wait_rechecks_before_reservation",
+        "status": "PASS"
+      },
+      {
+        "control": "test_expiry_after_admission_retains_unknown_reservation",
+        "status": "PASS"
+      },
+      {
+        "control": "test_expiry_immediately_before_transport_dispatch_sends_nothing[connect]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_expiry_immediately_before_transport_dispatch_sends_nothing[timer]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_inflight_transport_timer_is_capped_by_approval",
+        "status": "PASS"
+      },
+      {
+        "control": "test_expiry_during_response_keeps_unknown_usage_and_slot[False]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_expiry_during_response_keeps_unknown_usage_and_slot[True]",
+        "status": "PASS"
+      },
+      {
+        "control": "test_slow_connect_also_respects_request_deadline_without_approval",
+        "status": "PASS"
+      },
+      {
+        "control": "test_direct_qualification_gateway_inherits_manifest_expiry",
+        "status": "PASS"
+      },
+      {
+        "control": "test_direct_qualification_gateway_requires_deadline",
+        "status": "PASS"
+      }
+    ],
+    "command": "uv run pytest tests/test_qualification_expiry.py",
+    "status": "PASS"
+  },
+  "created_utc": "2026-10-18T03:53:28.118792+00:00",
+  "decision": "DEFER: live inference NOT RUN until capacity is approved; no deployment or default-route changes",
+  "evidence_class": "offline fake clocks, fake transport and synthetic loopback HTTP; no model",
+  "evidence_sha256": {
+    ".qualification/expiry-guard/after.xml": "e55a43dd2c3c59a6471ba862c1b2a38ffe2b3d79461d5b3261eb56762c06696f",
+    ".qualification/expiry-guard/before.xml": "4dbabd307945b29fd71766c85860a77eefa43ec882bf1cf3a6beec46be60511f",
+    ".qualification/expiry-guard/full-suite.xml": "1b5c2613dd81a51b948cf6606a4ea2416b9ec968e124c39ce5b0635c6226a255"
+  },
+  "finding": "Metadata pinning could exhaust the approved window before the runner dispatched a batch.",
+  "frozen_original": {
+    "controls_pass": 95,
+    "path": "docs/qualifications/2026-10-17-direct-local-review-controls.json",
+    "sha256": "7744b3f070cae861d0a06bf547795d89d9f46f00157ea8db9484fa1cb8ec190f",
+    "unchanged": true
+  },
+  "full_suite": {
+    "failed": 0,
+    "passed": 303,
+    "skip_reason": "existing missing sibling verifier-contract checkout",
+    "skipped": 6
+  },
+  "limitations": [
+    "No real engine contacted or model loaded.",
+    "Socket interruption does not prove already admitted engine work stopped.",
+    "Expiry after admission keeps the full unknown reservation and concurrency slot; only evidence-backed reconciliation can resolve it."
+  ],
+  "runtime": {
+    "attempt_accounting": "NOT RUN",
+    "availability": "NOT RUN",
+    "bounded_task_quality": "NOT RUN",
+    "concurrency_1_and_2": "NOT RUN",
+    "effective_context": "NOT RUN",
+    "engine_attempt_visibility": "NOT RUN",
+    "engine_peak_memory": "NOT RUN",
+    "latency": "NOT RUN",
+    "model_identity": "NOT RUN",
+    "operator_restart": "NOT RUN",
+    "resident_memory_samples": "NOT RUN",
+    "token_reservation_bound": "NOT RUN"
+  },
+  "schema_version": 1,
+  "source": {
+    "platform": "macOS-26.5-arm64-arm-64bit",
+    "python": "3.12.13",
+    "revision": "2343c6540f09445db2dd9fccd91638601cd1478c",
+    "sha256": {
+      ".github/workflows/direct-qualification.yml": "de8d36a038c823572d1517913b4f03f07da7b5d54d37381fd4dbfaebdc740e03",
+      "integrations/ai_pilot/gateway.py": "7ae955abd5781af2ab8ca7e1b9f5b58bf40f2d7b64c41dd837532e7e3027b1f4",
+      "integrations/ai_pilot/qualify.py": "0cd361e5240b468c438ebbb4a8b9198419c214aba0bf51bf7f99c245b10b0b51",
+      "src/portage/pilot_ledger.py": "1b24a36a5cc13b7ecfeb1ff7eb9a20e24b5b4cb31f435230cd0ae32950aad900",
+      "tests/test_qualification_expiry.py": "cb63f69fadb7cb3e22492c902ebb481a8d4889fad05730b08231f0af39aee2f9"
+    }
+  }
+}
