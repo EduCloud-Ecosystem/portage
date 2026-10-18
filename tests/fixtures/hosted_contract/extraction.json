@@ -1,0 +1,21 @@
+{
+  "id": "fixture_response_01",
+  "object": "chat.completion",
+  "created": 1,
+  "model": "fixture_model_01",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "blue"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 2,
+    "total_tokens": 12
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "profile_id": "fixture_profile_01",
+  "credential_owner_ref": "fixture_owner_01",
+  "origin": "https://llm.jetstream-cloud.org",
+  "chat_path": "/api/chat/completions",
+  "catalog_path": "/api/models",
+  "model_id": "fixture_model_01",
+  "returned_model_ids": [
+    "fixture_model_01",
+    "fixture_model_alias_01"
+  ]
+}

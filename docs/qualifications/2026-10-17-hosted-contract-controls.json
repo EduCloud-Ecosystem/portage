@@ -1,0 +1,852 @@
+{
+  "authorization": {
+    "credential_access": false,
+    "default_route_change": false,
+    "deployment": false,
+    "inference": false,
+    "promotion": false,
+    "provider_request": false,
+    "provider_selection": false,
+    "runtime_execution": false,
+    "spending": false
+  },
+  "checks": {
+    "diff_whitespace": "PASS",
+    "generated_profiles": {
+      "scale1.example": "PASS",
+      "scale2.educloud.staff": "PASS",
+      "scale2.educloud.student": "PASS"
+    },
+    "independent_read_only_review": "No blocking findings in fixture-only implementation",
+    "ruff": "PASS"
+  },
+  "controls": {
+    "cases": [
+      {
+        "control": "test_prompt_literals_match_direct_protocol_without_importing_transport",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_fixed_request_and_fictional_response[arithmetic]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_fixed_request_and_fictional_response[extraction]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[origin-http://llm.jetstream-cloud.org]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[origin-https://llm.jetstream-cloud.org:444]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[origin-https://fixture.invalid]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[origin-https://secret@llm.jetstream-cloud.org]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[origin-https://llm.jetstream-cloud.org?route=x]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[origin-https://llm.jetstream-cloud.org/api/]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[chat_path-/v1/chat/completions]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[chat_path-/api/api/chat/completions]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[chat_path-/fixture-model/v1/chat/completions]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[chat_path-/api/chat/completions?fallback=true]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[catalog_path-/api/v1/models]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[model_id-None]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[model_id-]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[credential_owner_ref-None]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[returned_model_ids-value14]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[returned_model_ids-value15]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[returned_model_ids-fixture]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_profile_and_exact_destination[returned_model_ids-value17]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[api_key]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[authorization]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[headers]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[base_url]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[fallback]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[proxy]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[verify_tls]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[tools]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[functions]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[tool_ids]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[task_id]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[files]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[search]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[knowledge]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[chat_id]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[endpoint]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[execute]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_profile_rejects_overrides_and_credentials[default_route]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_only_fixed_task_ids_can_be_planned[None]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_only_fixed_task_ids_can_be_planned[task1]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_only_fixed_task_ids_can_be_planned[]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_only_fixed_task_ids_can_be_planned[custom]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_only_fixed_task_ids_can_be_planned[https://fixture.invalid]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_approval_fields_never_enable_execution",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[None]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[True]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[0]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[301]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[302]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[307]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[308]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[401]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[403]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[429]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[500]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[502]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[503]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_http_outcomes_never_retry[504]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_streaming_or_unexpected_content_type_is_unknown[None]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_streaming_or_unexpected_content_type_is_unknown[text/event-stream]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_streaming_or_unexpected_content_type_is_unknown[text/html]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_streaming_or_unexpected_content_type_is_unknown[application/octet-stream]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_streaming_or_unexpected_content_type_is_unknown[application/json; charset=utf-16]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[{]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[null]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[[]]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[{}]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[\\xff]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[data: [DONE]]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[{\"model\":\"fixture_model_01\",\"model\":\"fixture_model_01\",\"choices\":[]}]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[{\"x\":NaN}]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[{\"x\":Infinity}]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[{\"x\":-Infinity}]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[{\"x\":1e999}]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[{\"x\":1.0}]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_malformed_duplicate_nonfinite_and_incomplete_json[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_nested_duplicate_usage_is_rejected",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_response_fields_are_not_forwarded[error]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_response_fields_are_not_forwarded[task_id]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_response_fields_are_not_forwarded[task_ids]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_response_fields_are_not_forwarded[tool_calls]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_response_fields_are_not_forwarded[function_call]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_response_fields_are_not_forwarded[usage_metadata]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_response_fields_are_not_forwarded[retry_after]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[wrong_model]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[missing_model]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[two_choices]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[no_choices]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[wrong_index]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[bool_index]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[wrong_role]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[nontext]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[long_text]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[missing_reason]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[tool_reason]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[null_reason]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[tool_message]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[function_message]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[extra_choice]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[bad_object]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[negative_created]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[bool_created]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[overflow_created]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[long_id]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_response_schema[long_fingerprint]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[None]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage1]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage2]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[True]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage4]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage5]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage6]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage7]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage8]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage9]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage10]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage11]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage12]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage13]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage14]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage15]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage16]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage17]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_invalid_or_unsupported_usage_never_becomes_a_charge[usage18]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_missing_usage_keeps_correct_task_separate",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_supported_reported_usage_is_not_clamped_or_promoted[0]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_supported_reported_usage_is_not_clamped_or_promoted[12]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_supported_reported_usage_is_not_clamped_or_promoted[1024]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_supported_reported_usage_is_not_clamped_or_promoted[1025]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_supported_reported_usage_is_not_clamped_or_promoted[65536]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_quality_failure_and_usage_are_independent[wrong-stop]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_quality_failure_and_usage_are_independent[42-length]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_quality_failure_and_usage_are_independent[-length]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_exact_preapproved_returned_model_mapping",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_bounded_evidence_never_contains_payload_ids_headers_or_amounts",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_oversized_response_is_unknown_without_hashing_payload",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_manually_constructed_evidence_is_still_sanitized",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_retry_after_cannot_create_a_retry_or_execution_path",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_no_io_or_secret_lookup_during_validation_planning_or_classification",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_liability_survives_reopen_without_settlement_side_effects[missing_usage]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_liability_survives_reopen_without_settlement_side_effects[overflow_usage]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_liability_survives_reopen_without_settlement_side_effects[http_error]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_liability_survives_reopen_without_settlement_side_effects[disconnect]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_unknown_liability_survives_reopen_without_settlement_side_effects[streaming]",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      },
+      {
+        "control": "test_supported_over_reservation_usage_fits_existing_ledger_without_clamping",
+        "module": "tests.test_hosted_contract",
+        "status": "PASS"
+      }
+    ],
+    "command": "uv run pytest tests/test_hosted_contract.py --junitxml=.qualification/hosted-contract/controls.xml",
+    "passed": 147,
+    "status": "PASS"
+  },
+  "created_utc": "2026-10-18T04:58:05.602017+00:00",
+  "decision": "DEFER: live inference NOT RUN until capacity and runtime execution are approved; no deployment or default-route changes",
+  "evidence_class": "offline pure fixture classification and explicit temporary-ledger test harness; no provider or model",
+  "evidence_sha256": {
+    ".qualification/hosted-contract/controls.xml": "8f312dc8b53a008d583bd5ce084f517fee499813d5dcc8224d60a64c06e75da1",
+    ".qualification/hosted-contract/full-suite.xml": "ad038450bbbad83ab12207adf64ce772abf531d268052b60cc0e479a30673e22"
+  },
+  "frozen_records": [
+    {
+      "controls_pass": 95,
+      "path": "docs/qualifications/2026-10-17-direct-local-review-controls.json",
+      "runtime_not_run": 12,
+      "sha256": "7744b3f070cae861d0a06bf547795d89d9f46f00157ea8db9484fa1cb8ec190f",
+      "unchanged": true
+    },
+    {
+      "controls_pass": 17,
+      "path": "docs/qualifications/2026-10-17-expiry-controls.json",
+      "runtime_not_run": 12,
+      "sha256": "8730abad29b6a70631499a88339ac7a6ab752bc4635d9decdd6fe62dc77936d4",
+      "unchanged": true
+    }
+  ],
+  "full_suite": {
+    "command": "uv run pytest -q --junitxml=.qualification/hosted-contract/full-suite.xml",
+    "failed": 0,
+    "includes_existing_expiry_controls_pass": 17,
+    "includes_existing_qualification_controls_pass": 95,
+    "passed": 450,
+    "skip_reason": "existing missing sibling verifier-contract checkout",
+    "skipped": 6
+  },
+  "historical_local_design_packet_unchanged": true,
+  "hosted_runtime": {
+    "finite_resource_bounds": "UNVERIFIED",
+    "individual_entitlement": "UNVERIFIED",
+    "model_compatibility": "UNVERIFIED",
+    "persistent_catalog_ceiling": "NOT RUN",
+    "persistent_two_attempt_ceiling": "NOT RUN",
+    "provider_observations": "NOT RUN",
+    "provider_termination": "UNVERIFIED",
+    "real_tls_dns": "NOT RUN",
+    "service_terms": "UNVERIFIED"
+  },
+  "limitations": [
+    "The pure module accepts fabricated bytes and supplied fields; it performs no transport, credential lookup, clock enforcement, ledger settlement, or reconciliation.",
+    "The focused ledger regression cases explicitly call existing ledger methods only in the test harness using temporary databases; this is not runtime integration.",
+    "Valid usage is provider-reported, never independently measured. A response hash does not establish provider termination or reconciliation evidence.",
+    "Supported above-reservation usage is retained in full with a stop/bound-failure recommendation. Unsupported or contradictory usage stays unknown.",
+    "The wider regression suite includes existing synthetic loopback transports, not model inference.",
+    "Local results and review do not substitute for final pull-request CI or authorize live execution."
+  ],
+  "namespace": "hosted_service_qualification",
+  "runtime": {
+    "attempt_accounting": "NOT RUN",
+    "availability": "NOT RUN",
+    "bounded_task_quality": "NOT RUN",
+    "concurrency_1_and_2": "NOT RUN",
+    "effective_context": "NOT RUN",
+    "engine_attempt_visibility": "NOT RUN",
+    "engine_peak_memory": "NOT RUN",
+    "latency": "NOT RUN",
+    "model_identity": "NOT RUN",
+    "operator_restart": "NOT RUN",
+    "resident_memory_samples": "NOT RUN",
+    "token_reservation_bound": "NOT RUN"
+  },
+  "schema_version": 1,
+  "source": {
+    "accepted_base_revision": "11438edec07ee7699a0c96e88a8fb5af60ec7348",
+    "python": "3.12.13",
+    "revision": "9cf520d4d5383857b4f2214b8a9a2f6ff068289b",
+    "sha256": {
+      "integrations/ai_pilot/hosted_contract.py": "2fb26dc3b318b0291c647eed4a15d399367add1294f43a2acbac16636c9827d4",
+      "tests/fixtures/hosted_contract/arithmetic.json": "0f61d26b987e0e72df8d0e193657880ffb87ce799af7981a4006641a53ef4975",
+      "tests/fixtures/hosted_contract/extraction.json": "868db5393e0345825e651e04962e3ce58f646d17b9a9e1754509512ab72fa3fc",
+      "tests/fixtures/hosted_contract/profile.json": "0d56e3793c5e61ceed9aa9b2c064b8de6d2fdf18b4a217a0b5a748a195acb787",
+      "tests/test_hosted_contract.py": "b58e8c41cfad9044f8dbf1581daab0d90fde420e08f18ccb137b8696f2e57df8"
+    }
+  },
+  "unchanged_runtime_source_sha256": {
+    ".github/workflows/direct-qualification.yml": "de8d36a038c823572d1517913b4f03f07da7b5d54d37381fd4dbfaebdc740e03",
+    ".github/workflows/portage-ci.yml": "0413520c4f7b05af853234b5748c496c41086763d4e11603789f851f754ec6db",
+    "integrations/ai_pilot/gateway.py": "7ae955abd5781af2ab8ca7e1b9f5b58bf40f2d7b64c41dd837532e7e3027b1f4",
+    "integrations/ai_pilot/qualify.py": "0cd361e5240b468c438ebbb4a8b9198419c214aba0bf51bf7f99c245b10b0b51",
+    "src/portage/pilot_ledger.py": "1b24a36a5cc13b7ecfeb1ff7eb9a20e24b5b4cb31f435230cd0ae32950aad900"
+  }
+}

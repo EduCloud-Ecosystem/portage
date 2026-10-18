@@ -1,0 +1,189 @@
+{
+  "artifact_kind": "proposed_control_plan_not_execution_configuration",
+  "candidate_files": [
+    "integrations/ai_pilot/hosted_contract.py",
+    "tests/test_hosted_contract.py",
+    "tests/fixtures/hosted_contract/"
+  ],
+  "controls": [
+    {
+      "fixture_module_assertion": "Prohibit network/secret imports and effects; readiness always disabled.",
+      "id": "H01",
+      "later_runtime_test_required": false,
+      "requirement": "Reject enabled runtime, any credential lookup, or network activity in fixture adapter.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Exact URL plan contains only approved proxy origin and paths.",
+      "id": "H02",
+      "later_runtime_test_required": false,
+      "requirement": "Map only the approved proxy origin and completion/catalog paths; never append /v1 or select a direct backend.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Unresolved runtime prerequisites are returned as errors, never permission.",
+      "id": "H03",
+      "later_runtime_test_required": false,
+      "requirement": "Reject missing exact model/owner/approval in executable eligibility; draft nulls never confer permission.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Unsupported client fields and profile substitutions are rejected.",
+      "id": "H04",
+      "later_runtime_test_required": false,
+      "requirement": "Reject user base URL, auth, path, provider, fallback, model substitution and unsupported fields.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Only the documented fixed text request subset is emitted.",
+      "id": "H05",
+      "later_runtime_test_required": false,
+      "requirement": "Reject tools, functions, tool IDs, search, files, URLs, knowledge sources and saved chat IDs.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Profile validation rejects weakened destination/TLS policy; no connection is made.",
+      "id": "H06",
+      "later_runtime_status": "NOT RUN; no runtime implementation or authorization",
+      "later_runtime_test_required": true,
+      "requirement": "Reject redirects, insecure TLS, hostname mismatch, unapproved ports and environment proxy changes.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Bounded fabricated bytes yield a structured failure and retain-unknown recommendation.",
+      "id": "H07",
+      "later_runtime_test_required": false,
+      "requirement": "Reject unexpected streaming, mismatched content type, malformed/oversized body, multiple choices and missing terminal response.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Terminal response, exact-output quality and reported usage remain separate outputs.",
+      "id": "H08",
+      "later_runtime_test_required": false,
+      "requirement": "Classify valid terminal usage as provider-reported only; length termination may fail task quality while retaining provider-reported usage.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Invalid usage variants never become zero or a complete-accounting recommendation.",
+      "id": "H09",
+      "later_runtime_test_required": false,
+      "requirement": "Missing, negative, boolean, fractional, malformed or contradictory usage retains full unknown reservation.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Full over-reservation usage is retained with a stop/bound-failure recommendation.",
+      "id": "H10",
+      "later_runtime_test_required": false,
+      "requirement": "Usage exceeding reservation is recorded fully; stop and fail the claimed bound.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Error classifications recommend stop with zero retries; no HTTP client exists.",
+      "id": "H11",
+      "later_runtime_status": "NOT RUN; no runtime implementation or authorization",
+      "later_runtime_test_required": true,
+      "requirement": "Mock 401, 403, 429, 5xx, Retry-After and disconnects; zero automatic retries or alternative destinations.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Model mismatch halts; catalog hashes cannot populate immutable model identity.",
+      "id": "H12",
+      "later_runtime_test_required": false,
+      "requirement": "Model/profile drift or missing model metadata halts; metadata hash never becomes a weight digest.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Supplied expired or incomplete approval evidence cannot produce enabled readiness.",
+      "id": "H13",
+      "later_runtime_status": "NOT RUN; no runtime implementation or authorization",
+      "later_runtime_test_required": true,
+      "requirement": "Fake clocks cross expiry during metadata, authority waits, SQLite lock waits, DNS/TLS/connect and immediately before dispatch.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Supplied clock/cancellation observations cannot establish provider termination.",
+      "id": "H14",
+      "later_runtime_status": "NOT RUN; no runtime implementation or authorization",
+      "later_runtime_test_required": true,
+      "requirement": "Wall-clock rollback never extends approval; client/transport timeout never proves provider cancellation.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Classifications never recommend a refund for post-admission uncertainty.",
+      "id": "H15",
+      "later_runtime_status": "NOT RUN; no runtime implementation or authorization",
+      "later_runtime_test_required": true,
+      "requirement": "After-admission failure/expiry retains unknown slot and reservation across restart and evidence-directory changes.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Readiness lists durable approval binding and attempt caps as unmet until independently evidenced.",
+      "id": "H16",
+      "later_runtime_status": "NOT RUN; no runtime implementation or authorization",
+      "later_runtime_test_required": true,
+      "requirement": "Persistent two-attempt cap and fixed approval/profile binding survive concurrent processes, restart, credential changes and relabeling.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Readiness lists the separate catalog budget as a required runtime control.",
+      "id": "H17",
+      "later_runtime_status": "NOT RUN; no runtime implementation or authorization",
+      "later_runtime_test_required": true,
+      "requirement": "Catalog budget persists separately; repeated metadata requests cannot become unrestricted polling.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Missing access, terms, or resource-bound evidence leaves readiness disabled.",
+      "id": "H18",
+      "later_runtime_test_required": false,
+      "requirement": "Incomplete approvals, terms/access uncertainty or unproved resource bounds cannot enable live execution.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "Outputs do not echo secrets, headers, raw payloads, personal IDs or unrestricted metadata.",
+      "id": "H19",
+      "later_runtime_test_required": false,
+      "requirement": "Evidence contains no credentials, headers, prompt/response text, unrestricted errors/catalogs or personal identifiers.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    },
+    {
+      "fixture_module_assertion": "No gateway/config registration; local evidence is not modified or promoted.",
+      "id": "H20",
+      "later_runtime_test_required": false,
+      "requirement": "All local twelve NOT RUN fields and both frozen control records remain unchanged; no default route registration.",
+      "status": "FIXTURE_ASSERTIONS_PASS"
+    }
+  ],
+  "default_route_eligible": false,
+  "deployment_authorized": false,
+  "fixture_results_scope": "147 focused tests pass locally; this does not verify runtime requirements.",
+  "implementation_status": "FIXTURE MODULE REVIEWED; local checks pass; final pull-request CI is a separate gate",
+  "pass_scope": "Fixture behavior only; no provider observation, runtime enforcement or authorization follows from synthetic PASS.",
+  "preserved_evidence": [
+    {
+      "controls_pass": 95,
+      "path": "docs/qualifications/2026-10-17-direct-local-review-controls.json",
+      "runtime_not_run": 12
+    },
+    {
+      "controls_pass": 17,
+      "path": "docs/qualifications/2026-10-17-expiry-controls.json",
+      "runtime_not_run": 12
+    }
+  ],
+  "promotion_authorized": false,
+  "provider_selected": false,
+  "completed_local_regressions": [
+    "existing 95 synthetic controls",
+    "existing 17 expiry controls",
+    "full suite",
+    "ruff",
+    "generated-profile checks",
+    "independent review"
+  ],
+  "runtime_execution_authorized": false,
+  "runtime_files_created": false,
+  "schema_version": 1,
+  "spending_authorized": false,
+  "status": "FIXTURE_IMPLEMENTATION_REVIEWED"
+}
