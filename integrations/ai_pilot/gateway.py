@@ -20,6 +20,7 @@ import time
 import urllib.error
 import urllib.request
 from contextlib import contextmanager
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -40,17 +41,64 @@ def open_once(request, timeout):
     ).open(request, timeout=timeout)
 
 
+class ApprovalWindow:
+    """A finite approval cannot be extended by a wall-clock rollback."""
+
+    def __init__(self, deadline):
+        if not math.isfinite(deadline):
+            raise ValueError("finite approval deadline required")
+        self.deadline = deadline
+        self.monotonic_deadline = time.monotonic() + max(0, deadline - time.time())
+        self.expired = False
+
+    def remaining(self):
+        remaining = min(
+            self.deadline - time.time(), self.monotonic_deadline - time.monotonic()
+        )
+        if remaining <= 0:
+            self.expired = True
+        return 0 if self.expired else remaining
+
+    def check(self):
+        if self.remaining() <= 0:
+            raise Denied("approval_expired")
+
+
+def qualification_window(manifest):
+    if manifest["mode"] != "qualification" or all(
+        model.get("synthetic") is True for model in manifest["models"].values()
+    ):
+        return None
+    try:
+        deadline = datetime.fromisoformat(manifest["approved_capacity"]["deadline_utc"])
+        if deadline.tzinfo is None:
+            raise ValueError("deadline must include a timezone")
+        return ApprovalWindow(deadline.timestamp())
+    except (KeyError, TypeError) as exc:
+        raise ValueError("qualification requires an approved deadline") from exc
+
+
 @contextmanager
-def inference_attempt(request, timeout):
+def inference_attempt(request, timeout, approval_window=None):
     """One destination, no retry, absolute response deadline including connect."""
     deadline = time.monotonic() + timeout
+
+    def remaining():
+        seconds = deadline - time.monotonic()
+        if approval_window is not None:
+            approval_window.check()
+            seconds = min(seconds, approval_window.remaining())
+        if seconds <= 0:
+            raise TimeoutError("inference deadline expired")
+        return seconds
+
     endpoint = urlsplit(request.full_url)
     connection_type = (
         http.client.HTTPSConnection
         if endpoint.scheme == "https"
         else http.client.HTTPConnection
     )
-    connection = connection_type(endpoint.hostname, endpoint.port, timeout=timeout)
+    connection = connection_type(endpoint.hostname, endpoint.port, timeout=remaining())
     timer = None
     try:
         connection.connect()
@@ -62,9 +110,13 @@ def inference_attempt(request, timeout):
             except OSError:
                 pass
 
-        timer = threading.Timer(max(0, deadline - time.monotonic()), interrupt)
+        # A slow connect is not permission to dispatch after either deadline.
+        seconds = remaining()
+        transport.settimeout(seconds)
+        timer = threading.Timer(seconds, interrupt)
         timer.daemon = True
         timer.start()
+        remaining()
         connection.request(
             request.get_method(),
             request.selector,
@@ -199,7 +251,14 @@ class Gateway(ThreadingHTTPServer):
         inference_key,
         authority_url,
         authority_key,
+        *,
+        approval_window=None,
     ):
+        self.approval_window = (
+            approval_window
+            if approval_window is not None
+            else qualification_window(manifest)
+        )
         super().__init__(address, Handler)
         self.ledger, self.manifest = ledger, manifest
         self.control_key, self.inference_key = control_key, inference_key
@@ -346,7 +405,16 @@ class Handler(BaseHTTPRequestHandler):
             # Body receipt may block. Recheck the current authority immediately
             # before admission; the ledger then rechecks local revocation atomically.
             token, asserted, project, member = self.identity()
-            admitted = self.server.ledger.admit(token, body["model"], reserved, asserted)
+            window = self.server.approval_window
+            if window is not None:
+                window.check()
+            admitted = self.server.ledger.admit(
+                token,
+                body["model"],
+                reserved,
+                asserted,
+                admission_check=window.check if window is not None else None,
+            )
             self.admitted = admitted
             spec = self.server.manifest["models"][body["model"]]
             if self.server.manifest["mode"] == "qualification":
@@ -363,7 +431,9 @@ class Handler(BaseHTTPRequestHandler):
             usage = None
             # One HTTP attempt only; every application retry is a new admission.
             with inference_attempt(
-                request, timeout=spec.get("request_timeout_seconds", 120)
+                request,
+                timeout=spec.get("request_timeout_seconds", 120),
+                approval_window=window,
             ) as upstream:
                 if body.get("stream"):
                     streaming = True

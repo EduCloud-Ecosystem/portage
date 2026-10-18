@@ -6,6 +6,7 @@ on:
       - src/portage/pilot_ledger.py
       - tests/test_pilot_*.py
       - tests/test_direct_qualification.py
+      - tests/test_qualification_expiry.py
       - .github/workflows/direct-qualification.yml
 permissions:
   contents: read
@@ -17,8 +18,15 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv run ruff check .
       - run: uv run python integrations/ai_pilot/qualify.py --output .qualification/ci
+      - name: Approval-expiry regressions (separate synthetic evidence)
+        run: uv run pytest tests/test_qualification_expiry.py --junitxml=.qualification/expiry-ci/controls.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: synthetic-qualification
           path: .qualification/ci
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetic-expiry-regressions
+          path: .qualification/expiry-ci
