@@ -21,6 +21,7 @@ What is asserted, and each is a way the port could have gone wrong:
 The request/verdict documents validate against the schemas in the sibling
 `verifier-contract` checkout when it is present.
 """
+
 import json
 import os
 import pathlib
@@ -165,8 +166,8 @@ def _shares_long_run(a, b, n=40):
     a, b = norm(a), norm(b)
     if len(a) < n or len(b) < n:
         return False
-    windows = {a[i:i + n] for i in range(len(a) - n + 1)}
-    return any(b[i:i + n] in windows for i in range(len(b) - n + 1))
+    windows = {a[i : i + n] for i in range(len(a) - n + 1)}
+    return any(b[i : i + n] in windows for i in range(len(b) - n + 1))
 
 
 def test_evidence_never_reproduces_the_change_set(code_profile):
@@ -208,7 +209,10 @@ def test_executable_form_round_trips_on_stdin_stdout(code_profile):
     request = _req(code_profile, lint=EXIT_0, test=EXIT_1)
     proc = subprocess.run(
         [sys.executable, str(SCRIPTS / "code_profile.py")],
-        input=json.dumps(request), capture_output=True, text=True, timeout=300,
+        input=json.dumps(request),
+        capture_output=True,
+        text=True,
+        timeout=300,
     )
     assert proc.returncode == 0, proc.stderr
     assert json.loads(proc.stdout) == code_profile.verify(request)
@@ -227,7 +231,10 @@ def test_a_broken_verifier_exits_non_zero_and_emits_no_verdict(payload):
     Reading it as one would escalate every task at the first crash."""
     proc = subprocess.run(
         [sys.executable, str(SCRIPTS / "code_profile.py")],
-        input=payload, capture_output=True, text=True, timeout=300,
+        input=payload,
+        capture_output=True,
+        text=True,
+        timeout=300,
     )
     assert proc.returncode != 0
     assert proc.stdout.strip() == ""
