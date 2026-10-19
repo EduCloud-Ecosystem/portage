@@ -13,6 +13,7 @@ state file that the SessionStart hook re-injects after a compact or on resume.
 The point is to stop you (and the agent) re-deriving where the repo is after a
 compact — re-derivation is re-sent context, which is pure quota burn.
 """
+
 import json
 import os
 import shutil
@@ -85,8 +86,10 @@ _Deterministic; no model was called._
     (state_dir / "project-state.md").write_text(state, encoding="utf-8")
 
     # PreCompact cannot block; stderr is informational only.
-    print(f"[pre_compact] snapshot written (trigger={trigger}, backup={backup_ref})",
-          file=sys.stderr)
+    print(
+        f"[pre_compact] snapshot written (trigger={trigger}, backup={backup_ref})",
+        file=sys.stderr,
+    )
     sys.exit(0)
 
 

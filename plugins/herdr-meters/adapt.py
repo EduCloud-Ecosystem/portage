@@ -22,6 +22,7 @@ Prompt engineering becomes an A/B test against the verifier instead of taste.
   adapt.py --task "..." --target claude.deep --lane code \
            [--acceptance "uv run pytest -q"] [--conventions-file CLAUDE.md]
 """
+
 import argparse
 import json
 import os
@@ -69,7 +70,7 @@ def template_key(lane: str, target_id: str) -> str:
 def load_template(key: str) -> tuple[str, str]:
     p = PROMPTS / f"{key}.md"
     if not p.is_file():
-        p = PROMPTS / "code.open.md"          # safest default: most scaffolding
+        p = PROMPTS / "code.open.md"  # safest default: most scaffolding
         key = "code.open"
     body = re.sub(r"<!--.*?-->\s*", "", p.read_text(), flags=re.DOTALL)
     return key, body.strip()
@@ -82,10 +83,17 @@ def extract_files(task: str) -> list[str]:
         return sorted(set(hits))
     try:
         r = subprocess.run(
-            ["ollama", "run", EXTRACTOR,
-             "List only file paths or code symbols named in this task, one per "
-             "line. If none, output NONE. Do not explain.\n\n" + task],
-            capture_output=True, text=True, timeout=45)
+            [
+                "ollama",
+                "run",
+                EXTRACTOR,
+                "List only file paths or code symbols named in this task, one per "
+                "line. If none, output NONE. Do not explain.\n\n" + task,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=45,
+        )
         out = [line.strip() for line in r.stdout.splitlines() if line.strip()]
         return [] if not out or out[0].upper().startswith("NONE") else out[:8]
     except Exception:
@@ -100,8 +108,14 @@ def conventions(path: str | None) -> str:
     return "(none recorded)"
 
 
-def adapt(task: str, target_id: str, lane: str, acceptance: str | None,
-          conv_file: str | None, rubric: str | None) -> dict:
+def adapt(
+    task: str,
+    target_id: str,
+    lane: str,
+    acceptance: str | None,
+    conv_file: str | None,
+    rubric: str | None,
+) -> dict:
     key, tpl = load_template(template_key(lane, target_id))
     files = extract_files(task)
     slots = {
@@ -128,8 +142,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", required=True)
     ap.add_argument("--target", required=True, help="target id from models.json")
-    ap.add_argument("--lane", default="code",
-                    choices=["code", "science", "plan", "design"])
+    ap.add_argument(
+        "--lane", default="code", choices=["code", "science", "plan", "design"]
+    )
     ap.add_argument("--acceptance")
     ap.add_argument("--conventions-file")
     ap.add_argument("--rubric")
@@ -140,8 +155,10 @@ def main():
     if a.json:
         print(json.dumps(rec, indent=2))
     else:
-        sys.stderr.write(f"[adapt] template={rec['template_id']} "
-                         f"class={rec['model_class']} files={rec['files_detected']}\n")
+        sys.stderr.write(
+            f"[adapt] template={rec['template_id']} "
+            f"class={rec['model_class']} files={rec['files_detected']}\n"
+        )
         print(rec["prompt"])
 
 

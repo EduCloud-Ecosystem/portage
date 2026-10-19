@@ -26,6 +26,7 @@ hand from `/usage` (see `snapshot`). Everything else is derived from the logs.
   measure.py report   --since 2026-07-01 --until 2026-07-08 \
                       --vs-since 2026-07-08 --vs-until 2026-07-15   # baseline vs treat
 """
+
 import argparse
 import importlib.util
 import json
@@ -116,14 +117,18 @@ def in_window(ts: str, since, until) -> bool:
 
 def snapshot(args) -> None:
     entry = {
-        "ts": datetime.now(UTC).isoformat(), "label": args.label,
-        "opus_pct": args.opus_pct, "all_pct": args.all_pct,
+        "ts": datetime.now(UTC).isoformat(),
+        "label": args.label,
+        "opus_pct": args.opus_pct,
+        "all_pct": args.all_pct,
         "credit_left": args.credit_left,
     }
     with (state(args.project) / "usage-log.jsonl").open("a") as f:
         f.write(json.dumps(entry) + "\n")
-    print(f"[measure] snapshot recorded ({args.label}): "
-          f"opus={args.opus_pct}% all={args.all_pct}% credit_left={args.credit_left}")
+    print(
+        f"[measure] snapshot recorded ({args.label}): "
+        f"opus={args.opus_pct}% all={args.all_pct}% credit_left={args.credit_left}"
+    )
 
 
 # ── WHAT THIS MODULE CANNOT SEE, AND WHAT THAT MEANS FOR A FUTURE METRIC ────
@@ -204,8 +209,11 @@ def summarize(project: str, since, until) -> dict:
     BECAUSE every tier was unreachable shows up as both facts rather than
     collapsing into one.
     """
-    attempts = [a for a in read_jsonl(state(project) / "failup-log.jsonl")
-                if in_window(a["ts"], since, until)]
+    attempts = [
+        a
+        for a in read_jsonl(state(project) / "failup-log.jsonl")
+        if in_window(a["ts"], since, until)
+    ]
     runs = runlog.reconstruct(attempts)
     admissible, inadmissible = runlog.partition(runs)
 
@@ -250,8 +258,10 @@ def summarize(project: str, since, until) -> dict:
             if runlog.attempt_category(a) == runlog.CAT_AVAILABILITY:
                 continue
             price, basis = tier_pricing.price_for_rung(
-                a["model"], cost_usd=a.get("cost_usd"),
-                tokens_in=a.get("tokens_in"), tokens_out=a.get("tokens_out"),
+                a["model"],
+                cost_usd=a.get("cost_usd"),
+                tokens_in=a.get("tokens_in"),
+                tokens_out=a.get("tokens_out"),
                 cache_read_tokens=a.get("cache_read_tokens"),
                 price_table=price_table,
             )
@@ -303,8 +313,11 @@ def summarize(project: str, since, until) -> dict:
         if len(r["attempts"]) > 1 and top > r["start_tier"]:
             escalated += 1
 
-    usage = [u for u in read_jsonl(state(project) / "usage-log.jsonl")
-             if in_window(u["ts"], since, until)]
+    usage = [
+        u
+        for u in read_jsonl(state(project) / "usage-log.jsonl")
+        if in_window(u["ts"], since, until)
+    ]
     usage.sort(key=lambda u: u["ts"])
     quota = {}
     if len(usage) >= 2:
@@ -396,32 +409,45 @@ def report(args) -> None:
         print("\n" + _fmt("comparison window", b))
         # honest verdict heuristic
         stall_a, stall_b = a["ceiling_stall_rate"] or 0, b["ceiling_stall_rate"] or 0
-        print("\n[verdict] "
-              + ("efficiency gains are only real if the second window's stall rate "
-                 "did NOT rise. "
-                 f"stall {stall_a}% -> {stall_b}%: "
-                 + ("QUALITY HELD — compare quota deltas for the efficiency win."
+        print(
+            "\n[verdict] "
+            + (
+                "efficiency gains are only real if the second window's stall rate "
+                "did NOT rise. "
+                f"stall {stall_a}% -> {stall_b}%: "
+                + (
+                    "QUALITY HELD — compare quota deltas for the efficiency win."
                     if stall_b <= stall_a
                     else "STALLS ROSE — the ladder is too aggressive; "
-                         "do not claim a win.")))
+                    "do not claim a win."
+                )
+            )
+        )
 
 
 # ---------------------------------------------------------------- downscale --
 
 PROVIDER_TO_METER = {
-    "anthropic": "claude", "claude": "claude",
-    "openai": "codex", "codex": "codex",
-    "local": "local", "ollama": "local",
-    "sovereign": "sovereign", "jetstream2": "sovereign", "campus-hpc": "sovereign",
-    "openrouter": "openrouter", "cheap": "openrouter",
-    "perplexity": "perplexity", "sonar": "perplexity",
+    "anthropic": "claude",
+    "claude": "claude",
+    "openai": "codex",
+    "codex": "codex",
+    "local": "local",
+    "ollama": "local",
+    "sovereign": "sovereign",
+    "jetstream2": "sovereign",
+    "campus-hpc": "sovereign",
+    "openrouter": "openrouter",
+    "cheap": "openrouter",
+    "perplexity": "perplexity",
+    "sonar": "perplexity",
 }
 
 # A meter is only a real downscale candidate if losing it is cheap. These are
 # deliberately conservative — a wrong "cut it" costs more than a wrong "keep it".
-REDUNDANT_AT = 0.10        # <10% of tasks PROVEN to need it
-THIN_DATA = 20             # fewer tasks than this in the window -> don't decide
-LOCAL_FLOOR = 0.30         # <30% resolving free/local -> nothing is being absorbed
+REDUNDANT_AT = 0.10  # <10% of tasks PROVEN to need it
+THIN_DATA = 20  # fewer tasks than this in the window -> don't decide
+LOCAL_FLOOR = 0.30  # <30% resolving free/local -> nothing is being absorbed
 
 
 def meter_of(model: str) -> str:
@@ -435,8 +461,12 @@ def load_ladder(project: str, tiers_file: str | None) -> list[str]:
     if path and not path.is_absolute():
         path = Path(project) / path
     if not (path and path.is_file()):
-        for guess in (".claude/tiers.claude.json", ".claude/tiers.educloud.json",
-                      ".claude/tiers.local.json", ".claude/tiers.json"):
+        for guess in (
+            ".claude/tiers.claude.json",
+            ".claude/tiers.educloud.json",
+            ".claude/tiers.local.json",
+            ".claude/tiers.json",
+        ):
             if (Path(project) / guess).is_file():
                 path = Path(project) / guess
                 break
@@ -468,21 +498,26 @@ def tasks_in(project: str, since, until) -> tuple[list[dict], int]:
     here rather than being repaired, because there is no repair: the run does not
     contain the observation.
     """
-    attempts = [a for a in read_jsonl(state(project) / "failup-log.jsonl")
-                if in_window(a["ts"], since, until)]
+    attempts = [
+        a
+        for a in read_jsonl(state(project) / "failup-log.jsonl")
+        if in_window(a["ts"], since, until)
+    ]
     admissible, excluded = runlog.partition(runlog.reconstruct(attempts))
 
     out = []
     for r in admissible:
         win = r["win_tier"]
-        out.append({
-            "start_tier": r["start_tier"],
-            "win_tier": win,
-            "win_meter": meter_of(r["win_model"]) if win is not None else None,
-            # proven = something cheaper was actually tried and failed
-            "proven": win is not None and r["start_tier"] < win,
-            "stalled": r["stalled"],
-        })
+        out.append(
+            {
+                "start_tier": r["start_tier"],
+                "win_tier": win,
+                "win_meter": meter_of(r["win_model"]) if win is not None else None,
+                # proven = something cheaper was actually tried and failed
+                "proven": win is not None and r["start_tier"] < win,
+                "stalled": r["stalled"],
+            }
+        )
     return out, excluded
 
 
@@ -520,9 +555,11 @@ def downscale(args) -> None:
     # numbers before cancelling a subscription on the strength of the table
     # below. Printed even when zero, so its absence is never mistaken for
     # "nothing was dropped".
-    print(f"excluded as inadmissible:  {excluded}"
-          "   (a cheaper tier was never reached — the run cannot prove"
-          " anything about it)")
+    print(
+        f"excluded as inadmissible:  {excluded}"
+        "   (a cheaper tier was never reached — the run cannot prove"
+        " anything about it)"
+    )
     print()
 
     # --- utilization -------------------------------------------------------
@@ -532,30 +569,44 @@ def downscale(args) -> None:
         by_meter[t["win_meter"]]["won"] += 1
         by_meter[t["win_meter"]]["proven"] += 1 if t["proven"] else 0
 
-    print(f"{'meter':<12}{'won':>5}{'share':>8}{'proven':>8}{'unproven':>10}"
-          f"{'interactive':>13}")
+    print(
+        f"{'meter':<12}{'won':>5}{'share':>8}{'proven':>8}{'unproven':>10}"
+        f"{'interactive':>13}"
+    )
     print("-" * 60)
     for m in ladder + [k for k in by_meter if k not in ladder]:
         d = by_meter.get(m, {"won": 0, "proven": 0})
         share = _pct(d["won"], len(resolved)) or 0
-        print(f"{m:<12}{d['won']:>5}{share:>7}%{d['proven']:>8}"
-              f"{d['won'] - d['proven']:>10}{inter.get(m, 0):>13}")
+        print(
+            f"{m:<12}{d['won']:>5}{share:>7}%{d['proven']:>8}"
+            f"{d['won'] - d['proven']:>10}{inter.get(m, 0):>13}"
+        )
     if not inter:
         print("\n  ! no interactive/app usage logged — Lane A and the Perplexity")
         print("    lane are INVISIBLE here. Enable herdr-meters use-logging before")
         print("    cutting anything, or you will undercount the lanes you use by hand.")
 
     # --- absorption floor --------------------------------------------------
-    free_share = (sum(by_meter[m]["won"] for m in ("local", "sovereign") if m in by_meter)
-                  / len(resolved)) if resolved else 0
-    print(f"\nfree/local absorption: {round(100 * free_share)}%"
-          f"  ({'above' if free_share >= LOCAL_FLOOR else 'BELOW'} the "
-          f"{int(LOCAL_FLOOR * 100)}% floor)")
+    free_share = (
+        (
+            sum(by_meter[m]["won"] for m in ("local", "sovereign") if m in by_meter)
+            / len(resolved)
+        )
+        if resolved
+        else 0
+    )
+    print(
+        f"\nfree/local absorption: {round(100 * free_share)}%"
+        f"  ({'above' if free_share >= LOCAL_FLOOR else 'BELOW'} the "
+        f"{int(LOCAL_FLOOR * 100)}% floor)"
+    )
     if free_share < LOCAL_FLOOR:
         print("  -> routing is not actually absorbing work yet. No downscale is safe.")
     if excluded:
-        print(f"  (computed over {len(resolved)} admissible resolved tasks; "
-              f"{excluded} run(s) excluded — see above)")
+        print(
+            f"  (computed over {len(resolved)} admissible resolved tasks; "
+            f"{excluded} run(s) excluded — see above)"
+        )
 
     # --- counterfactual per meter -----------------------------------------
     print("\nif a lane disappeared:")
@@ -565,30 +616,40 @@ def downscale(args) -> None:
             print(f"  {m:<12} free — not a subscription; nothing to cut.")
             continue
         if d["won"] == 0 and inter.get(m, 0) == 0:
-            print(f"  {m:<12} IDLE in this window -> strongest cut candidate "
-                  "(confirm the window is representative).")
+            print(
+                f"  {m:<12} IDLE in this window -> strongest cut candidate "
+                "(confirm the window is representative)."
+            )
             continue
 
         # where would its work go? next meter up the ladder.
         i = ladder.index(m)
-        receiver = next((x for x in ladder[i + 1:] if x != m), None)
+        receiver = next((x for x in ladder[i + 1 :] if x != m), None)
         if receiver is None:
             print(f"  {m:<12} top of ladder — cutting it removes your ceiling. Keep.")
             continue
 
         # how reliable is the receiver, from actual observation?
         r = by_meter.get(receiver, {"won": 0})
-        rate = _pct(r["won"], max(1, r["won"] + sum(
-            1 for t in tasks if t["stalled"])))
+        rate = _pct(r["won"], max(1, r["won"] + sum(1 for t in tasks if t["stalled"])))
         seen = r["won"]
-        est = (f"~{rate}% observed pass rate at {receiver}" if seen
-               else f"{receiver} never exercised — absorption UNKNOWN")
-        verdict = ("redundant" if d["proven"] <= REDUNDANT_AT * max(1, len(resolved))
-                   else "earning its place")
-        print(f"  {m:<12} {d['proven']} tasks PROVEN to need it "
-              f"({d['won'] - d['proven']} unproven) -> would fall to {receiver}; {est}")
-        print(f"  {'':<12} verdict: {verdict}"
-              f"{'  [thin data]' if n < THIN_DATA else ''}")
+        est = (
+            f"~{rate}% observed pass rate at {receiver}"
+            if seen
+            else f"{receiver} never exercised — absorption UNKNOWN"
+        )
+        verdict = (
+            "redundant"
+            if d["proven"] <= REDUNDANT_AT * max(1, len(resolved))
+            else "earning its place"
+        )
+        print(
+            f"  {m:<12} {d['proven']} tasks PROVEN to need it "
+            f"({d['won'] - d['proven']} unproven) -> would fall to {receiver}; {est}"
+        )
+        print(
+            f"  {'':<12} verdict: {verdict}" f"{'  [thin data]' if n < THIN_DATA else ''}"
+        )
 
     print("\nreminder: subscriptions are step functions — you cut a whole lane or")
     print("none of it. 'Unproven' load is the absorbable kind; 'proven' is not.")
