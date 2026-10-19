@@ -38,6 +38,7 @@ previous config on any schema violation or diff.
 Refuses to render on any schema violation. Never writes a partial file: both
 outputs are built in memory first and only written once everything validates.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -138,16 +139,18 @@ def render_price_table(models: list[dict]) -> dict:
     """
     by_alias: dict[str, list[dict]] = {}
     for m in models:
-        by_alias.setdefault(m["alias"], []).append({
-            "model_id": m["model_id"],
-            "provider_route": m["provider_route"],
-            "enabled": m.get("enabled", False),
-            "price_input_per_million": m.get("price_input_per_million"),
-            "price_output_per_million": m.get("price_output_per_million"),
-            "price_cache_hit_per_million": m.get("price_cache_hit_per_million"),
-            "price_source": m.get("price_source"),
-            "price_confirmed_date": m.get("price_confirmed_date"),
-        })
+        by_alias.setdefault(m["alias"], []).append(
+            {
+                "model_id": m["model_id"],
+                "provider_route": m["provider_route"],
+                "enabled": m.get("enabled", False),
+                "price_input_per_million": m.get("price_input_per_million"),
+                "price_output_per_million": m.get("price_output_per_million"),
+                "price_cache_hit_per_million": m.get("price_cache_hit_per_million"),
+                "price_source": m.get("price_source"),
+                "price_confirmed_date": m.get("price_confirmed_date"),
+            }
+        )
     return by_alias
 
 
@@ -262,14 +265,18 @@ def build_outputs(
 ) -> tuple[str, str]:
     """Returns (config_yaml_text, model_list_yaml_text)."""
     model_list_doc = render_model_list(registry["models"])
-    model_list_text = GENERATED_HEADER + "\n" + yaml.safe_dump(
-        model_list_doc, sort_keys=False, default_flow_style=False
+    model_list_text = (
+        GENERATED_HEADER
+        + "\n"
+        + yaml.safe_dump(model_list_doc, sort_keys=False, default_flow_style=False)
     )
 
     config_doc = dict(settings)
     config_doc["include"] = [model_list_name]
-    config_text = GENERATED_HEADER + "\n" + yaml.safe_dump(
-        config_doc, sort_keys=False, default_flow_style=False
+    config_text = (
+        GENERATED_HEADER
+        + "\n"
+        + yaml.safe_dump(config_doc, sort_keys=False, default_flow_style=False)
     )
     return config_text, model_list_text
 
