@@ -111,27 +111,36 @@ def reconstruct(attempts: list[dict]) -> list[dict]:
         win_tier = min((a["tier"] for a in passed), default=None)
 
         if win_tier is None:
-            unreached = [a["tier"] for a in run
-                         if attempt_category(a) == CAT_AVAILABILITY]
+            unreached = [
+                a["tier"] for a in run if attempt_category(a) == CAT_AVAILABILITY
+            ]
             marker = "availability_in_stalled_run"
         else:
-            unreached = [a["tier"] for a in run
-                         if a["tier"] < win_tier
-                         and attempt_category(a) == CAT_AVAILABILITY]
+            unreached = [
+                a["tier"]
+                for a in run
+                if a["tier"] < win_tier and attempt_category(a) == CAT_AVAILABILITY
+            ]
             marker = "availability_below_winner"
 
-        runs.append({
-            "run_id": run_id,
-            "attempts": run,
-            "start_tier": run[0]["tier"],
-            "win_tier": win_tier,
-            "win_model": next((a["model"] for a in run if a["tier"] == win_tier), None),
-            "stalled": win_tier is None,
-            "admissible": not unreached,
-            "inadmissible_reason": (
-                None if not unreached
-                else f"{marker}:{','.join(str(t) for t in sorted(unreached))}"),
-        })
+        runs.append(
+            {
+                "run_id": run_id,
+                "attempts": run,
+                "start_tier": run[0]["tier"],
+                "win_tier": win_tier,
+                "win_model": next(
+                    (a["model"] for a in run if a["tier"] == win_tier), None
+                ),
+                "stalled": win_tier is None,
+                "admissible": not unreached,
+                "inadmissible_reason": (
+                    None
+                    if not unreached
+                    else f"{marker}:{','.join(str(t) for t in sorted(unreached))}"
+                ),
+            }
+        )
     return runs
 
 
