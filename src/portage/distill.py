@@ -34,6 +34,7 @@ trained on them learns YOUR ladder, not the optimal one. Keep a held-out,
 human-judged slice as an anchor, and gate every adapter on the platform's
 non-inferiority rule before it ships.
 """
+
 import argparse
 import importlib.util
 import json
@@ -41,7 +42,7 @@ import os
 from collections import Counter, defaultdict
 from pathlib import Path
 
-MIN_PER_ROLE = 300          # below this, prompted roles beat a weak adapter
+MIN_PER_ROLE = 300  # below this, prompted roles beat a weak adapter
 
 
 def _load_runlog():
@@ -84,22 +85,25 @@ def tasks(project: str) -> list[dict]:
     """
     out = []
     for r in runlog.reconstruct(read_jsonl(state(project) / "failup-log.jsonl")):
-        out.append({
-            "run_id": r["run_id"],
-            # guard logs task text if present
-            "task": r["attempts"][0].get("task", ""),
-            "start_tier": r["start_tier"],
-            "win_tier": r["win_tier"],
-            "win_model": r["win_model"],
-            "attempts": len(r["attempts"]),
-            "stalled": r["stalled"],
-            "admissible": r["admissible"],
-            "inadmissible_reason": r["inadmissible_reason"],
-        })
+        out.append(
+            {
+                "run_id": r["run_id"],
+                # guard logs task text if present
+                "task": r["attempts"][0].get("task", ""),
+                "start_tier": r["start_tier"],
+                "win_tier": r["win_tier"],
+                "win_model": r["win_model"],
+                "attempts": len(r["attempts"]),
+                "stalled": r["stalled"],
+                "admissible": r["admissible"],
+                "inadmissible_reason": r["inadmissible_reason"],
+            }
+        )
     return out
 
 
 # ---------------------------------------------------------------- builders --
+
 
 def build_routing(project: str) -> list[dict]:
     """Label = the cheapest tier that passed. Ground truth, for free.
@@ -117,39 +121,58 @@ def build_routing(project: str) -> list[dict]:
             continue
         if t["stalled"] or not t["task"] or t["win_model"] is None:
             continue
-        rows.append({"messages": [
-            {"role": "system", "content":
-             "Route this coding task. Reply with only the target model string."},
-            {"role": "user", "content": t["task"]},
-            {"role": "assistant", "content": t["win_model"]},
-        ], "meta": {"run_id": t["run_id"], "win_tier": t["win_tier"]}})
+        rows.append(
+            {
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "Route this coding task. Reply with only the target model string.",
+                    },
+                    {"role": "user", "content": t["task"]},
+                    {"role": "assistant", "content": t["win_model"]},
+                ],
+                "meta": {"run_id": t["run_id"], "win_tier": t["win_tier"]},
+            }
+        )
     return rows
 
 
 def build_triage(project: str) -> list[dict]:
     """Positive = one-shot at the floor. Negative = needed clarification."""
-    clarified = {r.get("run_id") for r in
-                 read_jsonl(state(project) / "triage-log.jsonl") if r.get("clarify")}
+    clarified = {
+        r.get("run_id")
+        for r in read_jsonl(state(project) / "triage-log.jsonl")
+        if r.get("clarify")
+    }
     rows = []
     for t in tasks(project):
         if not t["task"]:
             continue
         under = t["run_id"] in clarified
-        rows.append({"messages": [
-            {"role": "system", "content":
-             "Is this task specified well enough to dispatch? Reply SPECIFIED "
-             "or UNDERSPECIFIED."},
-            {"role": "user", "content": t["task"]},
-            {"role": "assistant", "content":
-             "UNDERSPECIFIED" if under else "SPECIFIED"},
-        ], "meta": {"run_id": t["run_id"]}})
+        rows.append(
+            {
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "Is this task specified well enough to dispatch? Reply SPECIFIED "
+                        "or UNDERSPECIFIED.",
+                    },
+                    {"role": "user", "content": t["task"]},
+                    {
+                        "role": "assistant",
+                        "content": "UNDERSPECIFIED" if under else "SPECIFIED",
+                    },
+                ],
+                "meta": {"run_id": t["run_id"]},
+            }
+        )
     return rows
 
 
 def build_adapt(project: str) -> list[dict]:
     """Preference pairs: for a (lane, class), which template verified better."""
     log = read_jsonl(state(project) / "adapt-log.jsonl")
-    agg = defaultdict(lambda: defaultdict(lambda: [0, 0]))   # key -> tpl -> [ok, n]
+    agg = defaultdict(lambda: defaultdict(lambda: [0, 0]))  # key -> tpl -> [ok, n]
     for r in log:
         key = (r.get("lane"), r.get("model_class"))
         cell = agg[key][r.get("template_id")]
@@ -157,13 +180,21 @@ def build_adapt(project: str) -> list[dict]:
         cell[0] += 1 if r.get("verified") else 0
     rows = []
     for key, tpls in agg.items():
-        scored = sorted(((ok / n, t, n) for t, (ok, n) in tpls.items() if n >= 5),
-                        reverse=True)
+        scored = sorted(
+            ((ok / n, t, n) for t, (ok, n) in tpls.items() if n >= 5), reverse=True
+        )
         if len(scored) >= 2:
-            rows.append({"lane": key[0], "model_class": key[1],
-                         "winner": scored[0][1], "winner_rate": round(scored[0][0], 3),
-                         "loser": scored[-1][1], "loser_rate": round(scored[-1][0], 3),
-                         "n": sum(s[2] for s in scored)})
+            rows.append(
+                {
+                    "lane": key[0],
+                    "model_class": key[1],
+                    "winner": scored[0][1],
+                    "winner_rate": round(scored[0][0], 3),
+                    "loser": scored[-1][1],
+                    "loser_rate": round(scored[-1][0], 3),
+                    "n": sum(s[2] for s in scored),
+                }
+            )
     return rows
 
 
@@ -172,22 +203,29 @@ BUILDERS = {"routing": build_routing, "triage": build_triage, "adapt": build_ada
 
 # ------------------------------------------------------------------ report --
 
+
 def report(project: str) -> None:
     ts = tasks(project)
     inadmissible = sum(1 for t in ts if not t["admissible"])
-    print(f"tasks with outcomes: {len(ts)}   stalled: {sum(t['stalled'] for t in ts)}"
-          f"   inadmissible: {inadmissible}")
+    print(
+        f"tasks with outcomes: {len(ts)}   stalled: {sum(t['stalled'] for t in ts)}"
+        f"   inadmissible: {inadmissible}"
+    )
     if inadmissible:
-        print(f"  ! {inadmissible} run(s) had a tier below the winner that was never"
-              "\n    reached (rate limit / refused connection / timeout). They are"
-              "\n    excluded from the routing labels: 'the cheapest tier that passed'"
-              "\n    is not ground truth when a cheaper tier was never tried. They are"
-              "\n    still counted in triage, whose label comes from the clarify log"
-              "\n    rather than from tiers.")
+        print(
+            f"  ! {inadmissible} run(s) had a tier below the winner that was never"
+            "\n    reached (rate limit / refused connection / timeout). They are"
+            "\n    excluded from the routing labels: 'the cheapest tier that passed'"
+            "\n    is not ground truth when a cheaper tier was never tried. They are"
+            "\n    still counted in triage, whose label comes from the clarify log"
+            "\n    rather than from tiers."
+        )
     missing_text = sum(1 for t in ts if not t["task"])
     if missing_text:
-        print(f"  ! {missing_text} tasks have no task text logged — they are "
-              "unusable for training. Ensure the guard logs the task string.")
+        print(
+            f"  ! {missing_text} tasks have no task text logged — they are "
+            "unusable for training. Ensure the guard logs the task string."
+        )
     print(f"\n{'role':<10}{'examples':>10}{'ready?':>10}")
     print("-" * 30)
     for role, fn in BUILDERS.items():
@@ -201,16 +239,22 @@ def report(project: str) -> None:
     # be a new version of the defect this line is being fixed for.
     dist = Counter(t["win_tier"] for t in ts if not t["stalled"] and t["admissible"])
     if dist:
-        print("\nwin-tier distribution (the routing label distribution,"
-              " admissible runs only):")
+        print(
+            "\nwin-tier distribution (the routing label distribution,"
+            " admissible runs only):"
+        )
         for tier, c in sorted(dist.items()):
             print(f"  tier {tier}: {c}")
         if len(dist) == 1:
-            print("  ! only one tier ever wins — a router trained on this learns"
-                  "\n    a constant. Vary the workload before training.")
+            print(
+                "  ! only one tier ever wins — a router trained on this learns"
+                "\n    a constant. Vary the workload before training."
+            )
 
-    print("\nUntil a role reads 'yes', prompted roles outperform a weak adapter."
-          "\nGate any adapter on non-inferiority vs. the prompted baseline.")
+    print(
+        "\nUntil a role reads 'yes', prompted roles outperform a weak adapter."
+        "\nGate any adapter on non-inferiority vs. the prompted baseline."
+    )
 
 
 def main():
