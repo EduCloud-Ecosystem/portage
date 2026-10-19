@@ -1,9 +1,6 @@
 # PLATFORM.md — final definition: **Portage**
 
-> **Ladder rewritten 2026-08-05** per `CW04-model-roster.md` and CC-P6, and
-> checked against the live `registry.yaml`. Decision record in
-> `portage-local/docs/reports/` (`CW04-model-roster.md`, `CW04-HB0-drift.md`,
-> `P6-report.md`, `P7-report.md`).
+> **Ladder rewritten 2026-08-05** per CW-04 and CC-P6; decision record in `portage-local/docs/reports/`.
 
 A self-hostable, verifier-driven, sovereignty-aware agent control plane for
 Code, Science, Design, and Cowork — open-weight by default, benchmarked honestly
@@ -82,8 +79,10 @@ never owns policy; Herdr never owns provider-infrastructure routing.
                         T4 remote_open_broad (Morph — bf16, no quantization, one
                         key; MiniMax M3 primary, GLM-5.2 and Qwen in-slot without
                         a new account. "Flash Max" — DeepSeek V4 Flash re-run at
-                        reasoning_effort: max, the same checkpoint, not a second
-                        model — sits after this occupant) ·
+                        `effort: max` (the registry field; renders to LiteLLM's
+                        `reasoning_effort`), the same checkpoint, not a second
+                        model — sits after this occupant, before the Fable
+                        tier) ·
                         T5 remote_open_reserve (DORMANT — CW-02's
                         `remote_open_direct` renamed, absorbing Together. Two
                         independent re-enable triggers: (a) a latency-sensitive
@@ -142,13 +141,13 @@ the transition plan are in `REVISION-PLAN.md` and `docs/specs/10`–`11`.
 
 | Mode | Rungs | Constraint | Use |
 |---|---|---|---|
-| `open_weight_only` | T0–T5 | model_list contains no commercial endpoints. Eligibility tests **`license_family` against an allowlist, not `open_weight`** — published weights do not imply an acceptable grant. Hosted-open (T3/T4) is allowed because the weights are downloadable *and* the licence passes; only the compute is rented. The Fable tier is excluded here on `license_family` (`non_permissive`), not on hosting | end state; also offline/air-gapped |
+| `open_weight_only` | T0–T5 | model_list contains no commercial endpoints. Eligibility tests **`license_family` against an allowlist, not `open_weight`** — published weights do not imply an acceptable grant. Hosted-open (T3/T4) is allowed because the weights are downloadable *and* the license passes; only the compute is rented. The Fable tier is excluded here on `license_family` (`non_permissive`), not on hosting | end state; also offline/air-gapped |
 | `hybrid` | T0–T6 (T7 is the terminal stall, not a rung) | T6 allowed only as a boundary-gated fail-up ceiling (verified open failure / documented specialist / explicit override) — never a fixed subscription rung. One occupant: GPT-5.6 Sol, `enabled: false`. The gate is that flag plus policy, not code | **current mode.** Daily driving during the Scale-1 pilot |
 | `sovereign` | T0–T2 (+`institutional_sovereign` at Scale 2) | all routes pinned local + institutional; commercial *and* hosted-open both absent | clinical/regulated/EduCloud student-facing lanes |
 
 **Why `license_family` and not `open_weight`.** Kimi K3 is the case that
 falsified the original assumption: its weights were published on 2026-07-27,
-and its licence is a bespoke grant with a revenue-triggered separate-agreement
+and its license is a bespoke grant with a revenue-triggered separate-agreement
 clause and a UI-attribution mandate — neither MIT nor Apache. `open_weight:
 true` would have passed it. `license_family: non_permissive` does not. The field
 is required on every registry row and takes one of six values — `permissive`,

@@ -19,6 +19,7 @@ module maps into it, not the other way around, so a month-old
 `failup-log.jsonl` entry classifies exactly the same today as it always would
 have.
 """
+
 from __future__ import annotations
 
 # Legacy `reason` strings failup.py has written since before the verifier
@@ -27,9 +28,14 @@ from __future__ import annotations
 # starts with `unavailable:`, checked by `classify()` below rather than listed,
 # because the marker suffix (`unavailable:503`, `unavailable:timeout`, ...) is
 # diagnostic detail that stays in the raw log, not a taxonomy member of its own.
-CAPABILITY_CLASSES = frozenset({
-    "empty-diff", "lint-failed", "typecheck-failed", "tests-failed",
-})
+CAPABILITY_CLASSES = frozenset(
+    {
+        "empty-diff",
+        "lint-failed",
+        "typecheck-failed",
+        "tests-failed",
+    }
+)
 
 UNAVAILABLE_CLASS = "unavailable"
 

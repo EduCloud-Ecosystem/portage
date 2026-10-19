@@ -81,8 +81,12 @@ class TestLicenseFamily:
     required, not optional."""
 
     ALLOWED = (
-        "permissive", "weak_copyleft", "strong_copyleft",
-        "non_permissive", "proprietary", "unverified",
+        "permissive",
+        "weak_copyleft",
+        "strong_copyleft",
+        "non_permissive",
+        "proprietary",
+        "unverified",
     )
 
     def test_unlisted_value_rejected(self, render_config, schema):
@@ -153,15 +157,27 @@ class TestEffortField:
 
     def test_same_checkpoint_at_two_efforts_is_two_valid_rungs(self, render_config):
         models = [
-            _entry(alias="code_large", provider_route="deepseek",
-                   model_id="deepseek-v4-flash", endpoint=None, order=1),
-            _entry(alias="code_large", provider_route="deepseek",
-                   model_id="deepseek-v4-flash", endpoint=None, order=3,
-                   effort="max"),
+            _entry(
+                alias="code_large",
+                provider_route="deepseek",
+                model_id="deepseek-v4-flash",
+                endpoint=None,
+                order=1,
+            ),
+            _entry(
+                alias="code_large",
+                provider_route="deepseek",
+                model_id="deepseek-v4-flash",
+                endpoint=None,
+                order=3,
+                effort="max",
+            ),
         ]
         assert render_config.validate_cross_entry(models) == []
-        params = [m["litellm_params"]
-                  for m in render_config.render_model_list(models)["model_list"]]
+        params = [
+            m["litellm_params"]
+            for m in render_config.render_model_list(models)["model_list"]
+        ]
         assert params[0]["model"] == params[1]["model"] == "deepseek/deepseek-v4-flash"
         assert "reasoning_effort" not in params[0]
         assert params[1]["reasoning_effort"] == "max"
@@ -182,10 +198,17 @@ class TestFableTierGate:
     @staticmethod
     def _fable(**kw):
         base = dict(
-            alias="code_large", provider_route="moonshot", model_id="kimi-k3",
-            endpoint=None, order=5, open_weight=True, license="Kimi-K3-Custom",
-            license_family="non_permissive", max_context=262144,
-            fable_tier=True, enabled=False,
+            alias="code_large",
+            provider_route="moonshot",
+            model_id="kimi-k3",
+            endpoint=None,
+            order=5,
+            open_weight=True,
+            license="Kimi-K3-Custom",
+            license_family="non_permissive",
+            max_context=262144,
+            fable_tier=True,
+            enabled=False,
         )
         base.update(kw)
         return _entry(**base)
@@ -195,9 +218,11 @@ class TestFableTierGate:
         """What ordinary escalation may select. `enabled` is the flag HB-0
         documents downstream tooling filtering on; `fable_tier` is the second,
         independent veto CC-P6 adds."""
-        return [m["model_name"] for m in model_list
-                if m["model_info"]["enabled"]
-                and not m["model_info"].get("fable_tier")]
+        return [
+            m["model_name"]
+            for m in model_list
+            if m["model_info"]["enabled"] and not m["model_info"].get("fable_tier")
+        ]
 
     def test_fable_row_still_renders_into_the_routing_table(self, render_config):
         # It must appear: HB-0 Gate 2 requires /v1/models to list every alias
@@ -212,8 +237,13 @@ class TestFableTierGate:
 
     def test_ordinary_escalation_never_selects_a_fable_row(self, render_config):
         models = [
-            _entry(alias="code_large", provider_route="deepseek",
-                   model_id="deepseek-v4-flash", endpoint=None, order=1),
+            _entry(
+                alias="code_large",
+                provider_route="deepseek",
+                model_id="deepseek-v4-flash",
+                endpoint=None,
+                order=1,
+            ),
             self._fable(),
         ]
         doc = render_config.render_model_list(models)
@@ -235,8 +265,11 @@ class TestFableTierGate:
         # The only path that should exist: a caller that asks for the fable
         # tier by name, which is what gets logged as a human decision.
         doc = render_config.render_model_list([self._fable(enabled=True)])
-        explicit = [m["model_name"] for m in doc["model_list"]
-                    if m["model_info"].get("fable_tier")]
+        explicit = [
+            m["model_name"]
+            for m in doc["model_list"]
+            if m["model_info"].get("fable_tier")
+        ]
         assert explicit == ["code_large"]
 
     def test_ordinary_row_carries_no_fable_key_at_all(self, render_config):
@@ -247,9 +280,14 @@ class TestFableTierGate:
     def test_failover_only_is_a_separate_marker(self, render_config, schema):
         # CW-04 §2.2's OpenRouter demotion. No live row sets it yet; the field
         # exists so HB-2's health-check-gated path has somewhere to land.
-        entry = _entry(alias="code_large", provider_route="openrouter",
-                       model_id="example-org/x", endpoint=None,
-                       failover_only=True, license_family="unverified")
+        entry = _entry(
+            alias="code_large",
+            provider_route="openrouter",
+            model_id="example-org/x",
+            endpoint=None,
+            failover_only=True,
+            license_family="unverified",
+        )
         assert render_config.validate_schema({"models": [entry]}, schema) == []
         info = render_config.render_model_list([entry])["model_list"][0]["model_info"]
         assert info["failover_only"] is True
@@ -326,13 +364,22 @@ class TestRenderModelList:
             "morph": ("morph/minimax-m3", "os.environ/MORPH_API_KEY"),
             "moonshot": ("moonshot/kimi-k3", "os.environ/MOONSHOT_API_KEY"),
         }
-        ids = {"deepseek": "deepseek-v4-flash", "morph": "minimax-m3",
-               "moonshot": "kimi-k3"}
+        ids = {
+            "deepseek": "deepseek-v4-flash",
+            "morph": "minimax-m3",
+            "moonshot": "kimi-k3",
+        }
         for route, (model, key) in expected.items():
-            entry = _entry(alias="code_large", provider_route=route,
-                           model_id=ids[route], endpoint=None, order=1)
+            entry = _entry(
+                alias="code_large",
+                provider_route=route,
+                model_id=ids[route],
+                endpoint=None,
+                order=1,
+            )
             params = render_config.render_model_list([entry])["model_list"][0][
-                "litellm_params"]
+                "litellm_params"
+            ]
             assert params["model"] == model
             assert params["api_key"] == key
             assert "api_base" not in params
@@ -342,16 +389,23 @@ class TestRenderModelList:
         # 2's institution-hosted vLLM; `openai_direct` is api.openai.com.
         # Rendering GPT-5.6 Sol under `openai` would point it at Jetstream2 and
         # sign it with the sovereign token.
-        sovereign = _entry(alias="code_large", provider_route="openai",
-                           model_id="portage-code-large",
-                           endpoint="os.environ/SOVEREIGN_BASE_URL")
-        direct = _entry(alias="proprietary_research",
-                        provider_route="openai_direct", model_id="gpt-5.6-sol",
-                        endpoint=None, enabled=False)
+        sovereign = _entry(
+            alias="code_large",
+            provider_route="openai",
+            model_id="portage-code-large",
+            endpoint="os.environ/SOVEREIGN_BASE_URL",
+        )
+        direct = _entry(
+            alias="proprietary_research",
+            provider_route="openai_direct",
+            model_id="gpt-5.6-sol",
+            endpoint=None,
+            enabled=False,
+        )
         s = render_config.render_model_list([sovereign])["model_list"][0][
-            "litellm_params"]
-        d = render_config.render_model_list([direct])["model_list"][0][
-            "litellm_params"]
+            "litellm_params"
+        ]
+        d = render_config.render_model_list([direct])["model_list"][0]["litellm_params"]
         assert s["api_base"] == "os.environ/SOVEREIGN_BASE_URL"
         assert s["api_key"] == "os.environ/SOVEREIGN_TOKEN"
         assert d["model"] == "openai/gpt-5.6-sol"
