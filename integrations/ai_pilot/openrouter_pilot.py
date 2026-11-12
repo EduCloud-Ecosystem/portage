@@ -133,7 +133,7 @@ def metadata(path, key=None):
         return json.loads(raw)
 
 
-def run(env_file, directory, belay_source=None):
+def run(env_file, directory, belay_source=None, continue_from=None):
     directory = Path(directory)
     if directory.exists():
         raise ValueError("run directory exists; no resume or replay")
@@ -149,11 +149,35 @@ def run(env_file, directory, belay_source=None):
             raise ValueError("Belay source pin or clean backend check failed")
         __import__("openai")
         __import__("sqlalchemy")
+    prior = None
+    if continue_from:
+        original = json.loads((continue_from / "result.json").read_text())
+        diagnostic = json.loads(
+            (continue_from.parent / "planned-case-02-diagnostic.json").read_text()
+        )
+        created = json.loads(
+            (continue_from / "journal.jsonl").read_text().splitlines()[0]
+        )
+        if (
+            original["accounting"]["dispatch_claims"] != 1
+            or original["cases"][0]["name"] != "arithmetic_json"
+            or diagnostic["dispatch_claims"] != 1
+            or diagnostic["case"] != "extraction_json"
+            or diagnostic["http_status"] != 404
+        ):
+            raise ValueError("unexpected prior evidence")
+        prior = {
+            "cases": ["arithmetic_json", "extraction_json"],
+            "deadline": created["deadline"],
+            "evidence": str(continue_from.resolve()),
+        }
+        if time.time() >= prior["deadline"]:
+            raise ValueError("original deadline expired")
     key = load_key(env_file)
     key_data = metadata("key", key)["data"]
     catalog_raw = metadata("models/openai/gpt-4.1-mini/endpoints")
     catalog = validate_catalog(catalog_raw)
-    guard = SmokeGuard(directory, catalog)
+    guard = SmokeGuard(directory, catalog, prior=prior)
     (directory / "catalog.json").write_text(json.dumps(catalog_raw, indent=2))
     record = {
         "scope": "external_model_fixed_synthetic_transport_only",
@@ -166,6 +190,8 @@ def run(env_file, directory, belay_source=None):
         "checks": {},
         "cases": [],
         "all_passed": False,
+        "continuation": prior,
+        "retention": "ZDR unavailable; fixed synthetic inputs only",
         "python": platform.python_version(),
         "belay_revision": BELAY_REVISION if belay_source else None,
         "portage_lock_sha256": hashlib.sha256(Path("uv.lock").read_bytes()).hexdigest(),
@@ -217,14 +243,15 @@ def run(env_file, directory, belay_source=None):
                 except urllib.error.HTTPError as error:
                     return error.code, error.read(262145)
 
-            status, raw = request(case_body(CASES[0]), "invalid")
+            selected = [case for case in CASES if case["name"] not in guard.blocked_cases]
+            status, raw = request(case_body(selected[0]), "invalid")
             (directory / "invalid-credential.json").write_bytes(raw)
             record["checks"]["invalid_credential_no_dispatch"] = (
                 status == 401 and not guard.attempts
             )
             if not record["checks"]["invalid_credential_no_dispatch"]:
                 raise ValueError("pre-admission control failed")
-            for case in CASES:
+            for case in selected:
                 started = time.monotonic()
                 if belay_source and case["name"] == "hint_json":
                     value, record["belay_ledger"] = belay_call(
@@ -257,18 +284,19 @@ def run(env_file, directory, belay_source=None):
                     break
             before = guard.summary()["dispatch_claims"]
             state["active"] = False
-            status, raw = request(case_body(CASES[0]))
+            status, raw = request(case_body(selected[0]))
             (directory / "revoked-member.json").write_bytes(raw)
             record["checks"]["revoked_member_no_dispatch"] = (
                 status == 403 and guard.summary()["dispatch_claims"] == before
             )
             record["ledger_usage"] = ledger.usage("smoke001", "synthetic01")
         record["owned_servers_closed"] = True
-        record["all_passed"] = (
-            len(record["cases"]) == 4
+        record["selected_cases_passed"] = (
+            len(record["cases"]) == len(selected)
             and all(x["passed"] for x in record["cases"])
             and all(record["checks"].values())
         )
+        record["all_passed"] = record["selected_cases_passed"] and prior is None
     except Exception as error:
         record["error_type"] = type(error).__name__
     finally:
@@ -284,6 +312,7 @@ if __name__ == "__main__":
     parser.add_argument("--env-file", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--belay-source", type=Path)
+    parser.add_argument("--continue-from", type=Path)
     parser.add_argument("--execute-approved", action="store_true")
     args = parser.parse_args()
     if not args.execute_approved:
@@ -292,7 +321,7 @@ if __name__ == "__main__":
             "four synthetic requests, $0.05 application budget"
         )
     try:
-        result = run(args.env_file, args.output, args.belay_source)
+        result = run(args.env_file, args.output, args.belay_source, args.continue_from)
         print(json.dumps(result, indent=2))
         raise SystemExit(0 if result["all_passed"] else 1)
     except Exception as error:

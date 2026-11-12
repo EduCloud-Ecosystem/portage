@@ -330,3 +330,17 @@ def test_actual_belay_consumer_when_environment_available(connected, tmp_path):
     assert summary["attempts"] == 1
     assert summary["consumed"]["tokens"] == 20
     assert ledger.usage("smoke001", "synthetic01")["committed"] == 20
+
+
+def test_remaining_cases_cannot_replay_or_extend_prior_envelope(tmp_path):
+    deadline = time.time() + 50
+    prior = {"cases": ["arithmetic_json", "extraction_json"], "deadline": deadline}
+    guard = SmokeGuard(tmp_path / "continued", catalog(), prior=prior)
+    assert guard.deadline == deadline
+    assert guard.summary()["prior_reserved_usd"] == 0.025
+    for case in CASES[:2]:
+        with pytest.raises(Denied):
+            guard.check_body(case_body(case))
+    assert guard.check_body(case_body(CASES[2])) == "stream_terminal"
+    with pytest.raises(FileExistsError):
+        SmokeGuard(tmp_path / "continued", catalog(), prior=prior)

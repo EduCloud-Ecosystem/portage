@@ -92,3 +92,33 @@ and https://openrouter.ai/docs/cookbook/administration/usage-accounting. Public
 endpoint metadata is reacquired before the finite run; weights, exact precision,
 provider internal attempts and billing correctness remain provider-reported or
 unobservable, never independently attested by this probe.
+
+## Retained live failure and bounded adaptation
+
+At source 5a71874d4856bfb1cd63163a148c463364c44a5a, live-01 admitted
+arithmetic_json, made one dispatch, returned local 503 and preserved 259 reserved
+tokens plus a $0.0125 unknown monetary hold. It stopped without replay. Its
+invalid-key and revoked-member controls both passed. The provider error body
+was not available through the existing generic gateway error translation.
+
+A separately recorded diagnostic used the next originally planned, previously
+unexecuted extraction_json case, one direct provider request, within the same
+four-request/$0.05/10-minute envelope. OpenRouter returned 404:
+"No endpoints found matching your data policy (Zero data retention)."
+The account credit check succeeded; lack of funds is not the observed blocker.
+The diagnostic reserves another $0.0125; neither earlier hold is cleared by an
+unchanged account-usage observation or the provider's refusal message.
+
+For the remaining two unattempted cases only, external-smoke now explicitly
+sets zdr=false while preserving data_collection=deny, one model/provider,
+price caps, fixed synthetic prompts and no learner/private data. This changes
+only the synthetic probe's provider requirement; no student deployment policy
+is relaxed. The original artifacts are sealed. --continue-from reads their
+pointers and carries forward the original deadline, consumed case identities
+and $0.025 prior reservation. It cannot replay either attempted case, and uses
+a new evidence directory for stream_terminal and the real Belay hint_json call.
+A successful continuation will not turn the original failed run into a pass.
+
+This is a product integration diagnostic, not a comparative colony experiment.
+The original ZDR requirement was a conservative probe choice; its failure and
+this explicit synthetic-only amendment must remain visible in any handoff.

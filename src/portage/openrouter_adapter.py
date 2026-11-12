@@ -158,7 +158,7 @@ def validate_catalog(value):
 class SmokeGuard:
     """Append-only consumed attempts. A used run cannot be resumed or overwritten."""
 
-    def __init__(self, directory, catalog):
+    def __init__(self, directory, catalog, prior=None):
         if not 0 <= time.time() - catalog["observed_at"] < 300:
             raise ValueError("fresh catalog required")
         self.directory = Path(directory)
@@ -167,6 +167,18 @@ class SmokeGuard:
         self.deadline = time.time() + 600
         self.mono_deadline = time.monotonic() + 600
         self.attempts = {}
+        self.blocked_cases = set()
+        self.prior_reserved_usd = 0
+        if prior is not None:
+            # Explicit remaining-case continuation, never replay an attempted case
+            # or erase its unknown liability. Original deadline remains binding.
+            if prior["cases"] != ["arithmetic_json", "extraction_json"]:
+                raise ValueError("unexpected prior cases")
+            self.blocked_cases = set(prior["cases"])
+            self.prior_reserved_usd = 0.025
+            self.deadline = min(self.deadline, prior["deadline"])
+            self.mono_deadline = time.monotonic() + max(0, self.deadline - time.time())
+            self.check()
         self.catalog = copy.deepcopy(catalog)
         self._append(
             {
@@ -175,6 +187,7 @@ class SmokeGuard:
                 "budget_usd": BUDGET,
                 "deadline": self.deadline,
                 "max_requests": 4,
+                "prior": prior,
             }
         )
 
@@ -197,6 +210,8 @@ class SmokeGuard:
         self.check()
         for case in CASES:
             if body == case_body(case):
+                if case["name"] in self.blocked_cases:
+                    raise Denied("prior_case_already_consumed")
                 return case["name"]
         raise Denied("fixed_synthetic_case_required", 400)
 
@@ -207,7 +222,7 @@ class SmokeGuard:
                 a["state"] != "complete" for a in self.attempts.values()
             ):
                 raise Denied("smoke_replay_or_unresolved_attempt")
-            if len(self.attempts) >= 4:
+            if len(self.attempts) + len(self.blocked_cases) >= 4:
                 raise Denied("smoke_request_limit")
             attempt = {
                 "case": name,
@@ -243,7 +258,9 @@ class SmokeGuard:
             "allow_fallbacks": False,
             "require_parameters": True,
             "data_collection": "deny",
-            "zdr": True,
+            # These four fixed synthetic strings carry no learner/research data.
+            # The observed route refused ZDR; real-data use is not qualified.
+            "zdr": False,
             "max_price": {"prompt": 1, "completion": 2},
         }
         return result
@@ -291,6 +308,8 @@ class SmokeGuard:
     def summary(self):
         values = list(self.attempts.values())
         return {
+            "prior_reserved_usd": self.prior_reserved_usd,
+            "prior_consumed_cases": sorted(self.blocked_cases),
             "attempts": values,
             "dispatch_claims": sum(a["dispatches"] for a in values),
             "sdk_retries": 0,
