@@ -26,6 +26,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src" / "portage"))
+from decisions import ShadowDecider  # noqa: E402
 from pilot_ledger import Denied, Ledger, prepare_request  # noqa: E402
 from qualification_guard import (  # noqa: E402
     QualificationGuard,
@@ -355,7 +356,16 @@ class Gateway(ThreadingHTTPServer):
         *,
         approval_window=None,
         qualification_guard=None,
+        shadow_decider=None,
     ):
+        # The first integration is synthetic-only. This is not a route selector
+        # or permission to add decision work to a sealed qualification envelope.
+        if shadow_decider is not None and (
+            manifest["mode"] != "synthetic"
+            or not all(m.get("synthetic") is True for m in manifest["models"].values())
+        ):
+            raise ValueError("shadow decisions require synthetic mode and fixtures")
+        self.shadow_decider = shadow_decider
         self.qualification_guard = qualification_guard
         if qualification_guard is not None and manifest["mode"] != "qualification":
             raise ValueError("qualification guard requires qualification mode")
@@ -567,6 +577,23 @@ class Handler(BaseHTTPRequestHandler):
                     admission_check=window.check if window is not None else None,
                 )
             self.admitted = admitted
+            if (
+                self.server.shadow_decider is not None
+                and self.path == "/v1/chat/completions"
+            ):
+                decision = self.server.shadow_decider.decide(body["messages"])
+                self.server.ledger.record_shadow_decision(admitted, decision)
+                # A classifier's answer is never admission authority. The hook
+                # can consume time; do not dispatch on stale membership/deadline.
+                try:
+                    self.identity()
+                    if window is not None:
+                        window.check()
+                except Denied:
+                    # A caller observing the refusal must also observe the
+                    # unresolved reservation, not race the finalizer below.
+                    self.server.ledger.settle(admitted, None)
+                    raise
             spec = self.server.manifest["models"][body["model"]]
             if guard is not None:
                 guard.validate_gateway(
@@ -680,6 +707,10 @@ if __name__ == "__main__":
     validate_manifest(manifest, os.environ["PILOT_MODE"])
     if manifest["mode"] == "qualification":
         raise SystemExit("Use the registered, guarded qualification runner")
+    decision_mode = os.environ.get("PILOT_DECISIONS", "off")
+    if decision_mode not in {"off", "rules-shadow-v1"}:
+        raise SystemExit("PILOT_DECISIONS must be off or rules-shadow-v1")
+    shadow_decider = ShadowDecider() if decision_mode == "rules-shadow-v1" else None
     ledger = Ledger(os.environ["PILOT_LEDGER"])
     ledger.project(
         manifest["project"], manifest["project_allowance"], manifest["concurrency"]
@@ -692,4 +723,5 @@ if __name__ == "__main__":
         os.environ["LITELLM_MASTER_KEY"],
         os.environ["PILOT_AUTHORITY_URL"],
         os.environ["PILOT_AUTHORITY_KEY"],
+        shadow_decider=shadow_decider,
     ).serve_forever()
