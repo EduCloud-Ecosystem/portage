@@ -122,3 +122,36 @@ A successful continuation will not turn the original failed run into a pass.
 This is a product integration diagnostic, not a comparative colony experiment.
 The original ZDR requirement was a conservative probe choice; its failure and
 this explicit synthetic-only amendment must remain visible in any handoff.
+
+## Verified result
+
+Implementation executed at ac967c4de3ca282bc4ce37d076ea55627fe1ff2d.
+Final full suite: 562 passed, seven skipped (six unavailable sibling-contract
+checks and the actual Belay environment check, separately executed and passed).
+Lint/format and all three profile-render checks passed. No application source or
+provider-policy changes were made after these checks. Belay remained at its
+unchanged pinned revision.
+
+Total external inference dispatches: four, zero SDK retries. Two ZDR attempts
+failed and remain retained; the last two fixed synthetic cases passed on the
+explicitly non-ZDR/non-training route. Real SSE completed with READY; the actual
+Belay PortageProvider returned the expected JSON hint through its SDK. Portage
+settled 65 reported tokens (15 streaming + 50 Belay); Belay settled its one
+50-token attempt. Observed end-to-end times were about 1.03s and 1.18s, two
+observations only, not a latency benchmark. Provider-reported successful cost:
+$0.0000404. Earlier $0.025 of conservative reservations remain unresolved and
+are not misrepresented as either actual charges or zero-cost failures.
+Original four-case protocol all_passed remains false. Two selected remaining
+cases passed; that is evidence of the connection, not a retroactive clean run.
+All owned HTTP services were stopped. No learner data, merges or deployment.
+
+Independent readback inspected both persisted request ledgers, the actual raw
+SSE/JSON outputs, and total dispatches across all three evidence records.
+Artifact hashes and precise scope are in openrouter-synthetic-pilot-v1-validation.json.
+
+Next concrete development outcome: a bounded interactive synthetic-classroom
+profile exposing both fast and strong tutor aliases, with ordinary lesson cases
+and a complete instructor/browser walkthrough. This fixed-case harness is not
+that profile. Retention/approved destinations, institutional hosting/login,
+learner-data authorization and instructional acceptance remain open. The key
+still has no account-side cap; this run did not change account settings.

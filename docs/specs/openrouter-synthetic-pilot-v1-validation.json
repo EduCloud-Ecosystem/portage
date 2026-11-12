@@ -1,0 +1,159 @@
+{
+  "status": "synthetic_external_connection_verified_with_retained_failed_controls",
+  "source": "ac967c4de3ca282bc4ce37d076ea55627fe1ff2d",
+  "belay_source": "c5a27073e74b9eeb7ab697190915378b50132883",
+  "full_suite": {
+    "passed": 562,
+    "skipped": 7,
+    "failed": 0
+  },
+  "separate_belay_sdk_offline_test": {
+    "passed": 1
+  },
+  "live": {
+    "total_dispatches": 4,
+    "successful": 2,
+    "failed": 2,
+    "sdk_retries": 0,
+    "provider_internal_retries": "unobservable",
+    "reported_cost_usd": 4.04e-05,
+    "unresolved_prior_reservation_usd": 0.025,
+    "original_protocol_all_passed": false,
+    "retention": "ZDR unavailable; only fixed synthetic data used",
+    "owned_services_closed": true
+  },
+  "artifacts": {
+    "final-full.xml": {
+      "bytes": 80380,
+      "sha256": "5e58a5c97f52cc705f923100ed86d827e0c5e3fa1c3d44ddc4212e59ce288d8c"
+    },
+    "live-02-console.json": {
+      "bytes": 3985,
+      "sha256": "898c41186ba439a1832c24950e7a2eb5cd9ef0b38104d5831adee541baac8707"
+    },
+    "full.log": {
+      "bytes": 1037,
+      "sha256": "4d4bdc7219b28909a9a812f2d0f6fa9e8ebd259471158b844ecaf9b7765bf7c4"
+    },
+    "initial-lint.log": {
+      "bytes": 1588,
+      "sha256": "49ceb71873beedce68b4c96ba1a23b6ab69f556ca1e48c41652c47c8a44241b6"
+    },
+    "planned-case-02-diagnostic.json": {
+      "bytes": 974,
+      "sha256": "3ebc1f101d3e640982777e6a7049c5bbec8eddbbfa2d77346deb24d51eaed998"
+    },
+    "remaining-cases-offline.log": {
+      "bytes": 282,
+      "sha256": "da365dd69d386537fbc902e4483b3072510581c4b9fb5708f4db318b727c62ee"
+    },
+    "planned-case-02-provider-response.json": {
+      "bytes": 453,
+      "sha256": "083323442a6d789fd56465a37f690326f1aaee5fe9cab4d44b553dbf5827284c"
+    },
+    "belay-offline-02.log": {
+      "bytes": 80,
+      "sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d"
+    },
+    "final-full.log": {
+      "bytes": 1037,
+      "sha256": "445cca719fb15395122914208ff6c14152ce780ca35a5826dd3f384e1517574b"
+    },
+    "belay-offline-final.log": {
+      "bytes": 80,
+      "sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d"
+    },
+    "live-01-console.json": {
+      "bytes": 1248,
+      "sha256": "3548be7995454dd20d3d6c498589c6813e39c79e545beff5555bf19d234344a4"
+    },
+    "focused-01.log": {
+      "bytes": 25960,
+      "sha256": "9f8e02180df2426315ffdd7f4dcc1dc0bba1a26325a590f9c191fdb5801b0d46"
+    },
+    "belay-offline-01.log": {
+      "bytes": 140,
+      "sha256": "489b19c9f6d55c014ffd76af9842c768c47bfef5c80bb7792e4edab25c71c766"
+    },
+    "focused-03.log": {
+      "bytes": 160,
+      "sha256": "4bed8cc624113743771e380f4fea7f09ec8586d03d46684c5c3a9889a2038305"
+    },
+    "belay-environment.txt": {
+      "bytes": 994,
+      "sha256": "5f9eb3e6a5d2a22fea347c386415ba483f25aa2b1681d0c4a4847150c0d2d3d2"
+    },
+    "full.xml": {
+      "bytes": 80248,
+      "sha256": "50303da20209a8ff0451ee28f4d4a02e91dce98366c5f5437b9313cee65607e7"
+    },
+    "focused-02.log": {
+      "bytes": 80,
+      "sha256": "e2289c230135b682d66e48107f8caab30f5b37878e8daf2e9fb92df9aebb1375"
+    },
+    "account-check.json": {
+      "bytes": 245,
+      "sha256": "d0920fd7519045eba325e1a53bd038ea47ef78ed53e74987b3d050ba32fb1f69"
+    },
+    "live-01/arithmetic_json.response": {
+      "bytes": 44,
+      "sha256": "8f4b3b604e911ae20f1b0481bd49db753efd356441815ca17c850786a48fa6e3"
+    },
+    "live-01/result.json": {
+      "bytes": 1247,
+      "sha256": "ff2aa73604bf28a334f5046800751e55c450f24d28b6d5aea6fed4f6484b0ff4"
+    },
+    "live-01/invalid-credential.json": {
+      "bytes": 74,
+      "sha256": "3d9412dd1021ef8b191563d3bc25714e7bc17fc62b19075c310b81d5e99f74e9"
+    },
+    "live-01/journal.jsonl": {
+      "bytes": 871,
+      "sha256": "710ae30c31ec3a90ed76b68c307c928f81b5bf664f22fb8ffd6d34f07fc83815"
+    },
+    "live-01/catalog.json": {
+      "bytes": 4993,
+      "sha256": "23132ba5ac5661b1f34ff30574c33921bdc89c850028e49c8f9258058e8c4785"
+    },
+    "live-01/revoked-member.json": {
+      "bytes": 76,
+      "sha256": "1d007d170a28997a0ecae56d29c169f115643feefac9ff84ac17ed4cdb31e05b"
+    },
+    "live-02/result.json": {
+      "bytes": 3984,
+      "sha256": "da0c515b9a8edcaa3658f702f2287defa5b639ba96ea1e723ead6203c83ef603"
+    },
+    "live-02/hint_json.upstream.jsonl": {
+      "bytes": 897,
+      "sha256": "8b03453561acd73f2d3ccc5886a62685fb7a3e5bfd037b3c50e805a22cd0114e"
+    },
+    "live-02/invalid-credential.json": {
+      "bytes": 74,
+      "sha256": "3d9412dd1021ef8b191563d3bc25714e7bc17fc62b19075c310b81d5e99f74e9"
+    },
+    "live-02/stream_terminal.upstream.jsonl": {
+      "bytes": 1363,
+      "sha256": "22f11372806ee105b9da25c356bdf77884e5f23b1557000157f5809e232fcb6f"
+    },
+    "live-02/journal.jsonl": {
+      "bytes": 2481,
+      "sha256": "970efdfba13b805f9c6e08877ff42f2d1645a31e3047145a8666141932257928"
+    },
+    "live-02/hint_json.response": {
+      "bytes": 82,
+      "sha256": "d9539a64e2cd4aa51918adefe1ddb655de55774f6c7af652cfdefa8c6f21c575"
+    },
+    "live-02/catalog.json": {
+      "bytes": 4993,
+      "sha256": "23132ba5ac5661b1f34ff30574c33921bdc89c850028e49c8f9258058e8c4785"
+    },
+    "live-02/revoked-member.json": {
+      "bytes": 76,
+      "sha256": "1d007d170a28997a0ecae56d29c169f115643feefac9ff84ac17ed4cdb31e05b"
+    },
+    "live-02/stream_terminal.response": {
+      "bytes": 1306,
+      "sha256": "837820f5f6d9ea93a4daf14c0fd54fc8a80a9d3a59094626cca211c1f15aa32c"
+    }
+  }
+}
