@@ -578,7 +578,8 @@ class Handler(BaseHTTPRequestHandler):
                 )
             self.admitted = admitted
             if (
-                self.server.shadow_decider is not None
+                guard is None
+                and getattr(self.server, "shadow_decider", None) is not None
                 and self.path == "/v1/chat/completions"
             ):
                 decision = self.server.shadow_decider.decide(body["messages"])
