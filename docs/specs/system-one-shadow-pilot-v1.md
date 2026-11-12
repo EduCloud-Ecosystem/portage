@@ -62,3 +62,53 @@ Freeze a separately reviewed decision-model artifact and evaluation set, compare
 against these rules and the existing LLM approach, and measure correctness,
 abstention, latency, costs and downstream quality. Do not enable route-changing
 behavior or student-data processing from this synthetic milestone.
+
+## Run the working software pilot
+
+From a clean checkout of this branch, Python 3.11+ is sufficient for the demo:
+
+```sh
+python3 integrations/ai_pilot/decision_demo.py
+```
+
+Expected: `passed: true`, seven passing controls, HTTP statuses
+`[200, 200, 200, 403]`, three actual loopback inference requests, zero external
+model requests and SDK retries, and cleanup of owned servers/temporary state.
+The rules baseline recommends `code_large` for one fixture while the gateway
+still forwards the originally requested `code_small`. Unknown input abstains.
+Output contains labels, uncalibrated scores, backend/source identity and measured
+decision latency; never input text, credentials or exception messages.
+
+For the existing synthetic gateway launcher only, set
+`PILOT_DECISIONS=rules-shadow-v1`; default is `off`. Hosted and qualification
+modes refuse this hook. No browser or caller can enable it. It adds no public
+endpoint or response fields. Operator evidence lives in the existing ledger's
+`shadow_decisions` table, keyed to admitted `requests.id`. These are synthetic
+pilot records; a real-data retention/export policy remains required.
+
+Full software checks use the existing `uv.lock`:
+
+```sh
+uv run --locked pytest
+uv run --locked ruff check .
+```
+
+Use the three render-check commands in `.github/workflows/portage-ci.yml` too.
+No dependency or model package was added. The initial validation used CPython
+3.12.13 and uv 0.11.16, installing dependencies from the local cache with
+`--offline`. The standalone demo also ran on Python 3.14.5.
+
+The score adapter is a **trusted bounded local-code interface**, not a sandbox
+for arbitrary Python plugins. Its fixed input cap is 4096 UTF-8 bytes; one call
+answers all three questions. The initial score-margin threshold of 0.5 is a
+reference operating point, not calibrated confidence. A trained backend must
+qualify its execution time, artifact and scale before use. The production
+launcher exposes only the rules baseline, and only in synthetic mode.
+
+This delivery provides working software integration, not a learned System One
+model, routing savings, scientific acceptance or classroom deployment. The
+original failed numeric-validation and refusal-accounting controls and initial
+lint failure are retained in `.qualification/system-one-v1/`; the umbrella
+coordination record carries reviewed counts and hashes. A draft PR is not
+opened automatically because this repository's PR workflow invokes a paid
+model reviewer; no such invocation is authorized by this slice.
