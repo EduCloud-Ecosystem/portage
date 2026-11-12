@@ -27,6 +27,7 @@ from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src" / "portage"))
 from decisions import ShadowDecider  # noqa: E402
+from openrouter_adapter import SmokeGuard, validate_external_manifest  # noqa: E402
 from pilot_ledger import Denied, Ledger, prepare_request  # noqa: E402
 from qualification_guard import (  # noqa: E402
     QualificationGuard,
@@ -242,6 +243,9 @@ def qualified_metadata(guard, slot, authority_key):
 
 
 def validate_manifest(manifest, mode):
+    if mode == "external-smoke":
+        validate_external_manifest(manifest)
+        return
     if (
         mode not in {"synthetic", "hosted", "qualification"}
         or manifest.get("mode") != mode
@@ -357,7 +361,19 @@ class Gateway(ThreadingHTTPServer):
         approval_window=None,
         qualification_guard=None,
         shadow_decider=None,
+        external_guard=None,
     ):
+        if manifest["mode"] == "external-smoke":
+            validate_external_manifest(manifest)
+            if not isinstance(external_guard, SmokeGuard) or address[0] != "127.0.0.1":
+                raise ValueError("external smoke requires a one-shot guard and loopback")
+            authority = urlsplit(authority_url)
+            if authority.scheme != "http" or authority.hostname != "127.0.0.1":
+                raise ValueError("external smoke requires synthetic loopback authority")
+            approval_window = external_guard
+        elif external_guard is not None:
+            raise ValueError("external guard requires external-smoke mode")
+        self.external_guard = external_guard
         # The first integration is synthetic-only. This is not a route selector
         # or permission to add decision work to a sealed qualification envelope.
         if shadow_decider is not None and (
@@ -506,8 +522,16 @@ class Handler(BaseHTTPRequestHandler):
         self.response_started = False
         streaming = False
         guarded_attempt = None
+        external_attempt = None
+        external = getattr(self.server, "external_guard", None)
         guard = self.server.qualification_guard
         try:
+            if external is not None:
+                validate_external_manifest(self.server.manifest)
+                if self.command != "POST" or self.path != "/v1/chat/completions":
+                    raise Denied("smoke_operation_not_allowed")
+                self.external_body = self.body()
+                external.check_body(self.external_body)
             if guard is not None:
                 guard.validate_gateway(
                     self.server.ledger, self.server.manifest, self.server.authority_url
@@ -551,7 +575,11 @@ class Handler(BaseHTTPRequestHandler):
             }:
                 raise Denied("not_found", 404)
             body, reserved = prepare_request(
-                self.qualification_body if guard else self.body(),
+                self.qualification_body
+                if guard
+                else self.external_body
+                if external
+                else self.body(),
                 self.server.manifest["models"],
                 self.path[4:],
             )
@@ -577,6 +605,8 @@ class Handler(BaseHTTPRequestHandler):
                     admission_check=window.check if window is not None else None,
                 )
             self.admitted = admitted
+            if external is not None:
+                external_attempt = external.start(self.external_body, admitted)
             if (
                 guard is None
                 and getattr(self.server, "shadow_decider", None) is not None
@@ -602,6 +632,8 @@ class Handler(BaseHTTPRequestHandler):
                 )
             if self.server.manifest["mode"] == "qualification":
                 body["model"] = spec["upstream_model"]
+            elif external is not None:
+                body = external.request_body(body)
             request = urllib.request.Request(
                 spec["endpoint"].rstrip("/") + self.path,
                 data=json.dumps(body).encode(),
@@ -617,7 +649,11 @@ class Handler(BaseHTTPRequestHandler):
                 request,
                 timeout=spec.get("request_timeout_seconds", 120),
                 approval_window=window,
-                dispatch_check=(lambda: guard.claim(guarded_attempt)) if guard else None,
+                dispatch_check=(lambda: guard.claim(guarded_attempt))
+                if guard
+                else (lambda: external.claim(external_attempt))
+                if external
+                else None,
             ) as upstream:
                 if body.get("stream"):
                     streaming = True
@@ -630,7 +666,11 @@ class Handler(BaseHTTPRequestHandler):
                     self.end_headers()
                     self.close_connection = True
                     done = False
+                    response_bytes = 0
                     while line := upstream.readline(262145):
+                        response_bytes += len(line)
+                        if external and response_bytes > 262144:
+                            raise ValueError("upstream response too large")
                         if len(line) > 262144:
                             raise ValueError("upstream event too large")
                         if line.strip() == b"data: [DONE]":
@@ -641,6 +681,8 @@ class Handler(BaseHTTPRequestHandler):
                             )
                             if chunk.get("error"):
                                 raise ValueError("upstream stream failed")
+                            if external:
+                                external.observe(external_attempt, chunk)
                             if guard:
                                 usage = observe_usage(usage, chunk)
                             elif chunk.get("usage"):
@@ -651,14 +693,18 @@ class Handler(BaseHTTPRequestHandler):
                             break
                     if not done:
                         usage = None
+                    if external and not external.finish(external_attempt, complete=done):
+                        usage = None
                 else:
-                    if guard:
+                    if guard or external:
                         raw = upstream.read(262145)
                         if len(raw) > 262144:
                             raise ValueError("response too large")
                         result = unique_json(raw)
                     else:
                         result = json.load(upstream)
+                    if external:
+                        external.observe(external_attempt, result)
                     usage = (
                         observe_usage(None, result)
                         if guard and not result.get("error")
@@ -668,6 +714,8 @@ class Handler(BaseHTTPRequestHandler):
                             else None
                         )
                     )
+                    if external and not external.finish(external_attempt, complete=True):
+                        usage = None
                     # Commit reported usage before acknowledging completion;
                     # an immediate usage read must observe the completed call.
                     if guard:
@@ -697,6 +745,8 @@ class Handler(BaseHTTPRequestHandler):
             if not streaming:
                 self.reply(503, {"error": {"code": "inference_unavailable"}})
         finally:
+            if external_attempt:
+                external.finish(external_attempt)
             if guarded_attempt:
                 guard.finish(guarded_attempt, known=False)
             elif admitted:
@@ -706,7 +756,7 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     manifest = json.loads(Path(os.environ["PILOT_MANIFEST"]).read_text())
     validate_manifest(manifest, os.environ["PILOT_MODE"])
-    if manifest["mode"] == "qualification":
+    if manifest["mode"] in {"qualification", "external-smoke"}:
         raise SystemExit("Use the registered, guarded qualification runner")
     decision_mode = os.environ.get("PILOT_DECISIONS", "off")
     if decision_mode not in {"off", "rules-shadow-v1"}:

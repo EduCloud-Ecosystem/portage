@@ -49,3 +49,46 @@ internal retries and hardware are not independently visible. Classroom quality,
 hosting, institutional acceptance, embeddings and trained System One remain
 separate gates. Required final checkpoint: exact revision, tests, raw evidence,
 actual external request count, cost/unknowns, limitations and next action.
+
+## Implementation checkpoint before live execution
+
+The bounded adapter is src/portage/openrouter_adapter.py, imported by the existing
+HTTP gateway. integrations/ai_pilot/openrouter_pilot.py owns the one-shot runner.
+The first three cases exercise Portage HTTP JSON/SSE. The fourth uses the actual
+Belay-classroom PortageProvider and its enforced local ledger at unchanged source
+c5a27073e74b9eeb7ab697190915378b50132883, with a fixed synthetic subject and local
+synthetic membership authority. This is not an institutional enrollment exercise.
+Only code_small is exposed; code_large, embedding and arbitrary prompts are not
+silently enabled. Known JSON-format behavior in other modes is unchanged.
+
+Preliminary focused checks: 82 passed across new controls/gateway/System One;
+actual Belay provider and both ledgers separately passed against the offline
+adapter fixture. Retained initial failures: seven-character synthetic project ID
+rejected by the existing opaque-ID validator (fixed to eight characters), fixture
+threads required interruption after setup errors, initial lint formatting, and
+one unavailable interpreter path corrected to the existing root .venv. No paid
+request occurred during these failures. Raw logs remain under ignored
+.qualification/openrouter/evidence/; this includes skipped/unavailable attempts.
+
+Reproduction (from this checkout; explicit paid execution, do not rerun an
+existing evidence directory):
+
+```sh
+/Users/gregchism/dev/.educloud-worktrees/belay-classroom-system-one-consumer-v1/.venv/bin/python \
+  integrations/ai_pilot/openrouter_pilot.py \
+  --env-file .qualification/openrouter/.env \
+  --output .qualification/openrouter/evidence/live-01 \
+  --belay-source /Users/gregchism/dev/.educloud-worktrees/belay-classroom-system-one-consumer-v1 \
+  --execute-approved
+```
+
+Python 3.12.13 for the Belay caller, its existing installed dependency capture
+SHA256 5f9eb3e6a5d2a22fea347c386415ba483f25aa2b1681d0c4a4847150c0d2d3d2
+(.qualification/openrouter/evidence/belay-environment.txt). Portage retains its
+existing uv.lock; the adapter itself uses only the standard library. The capture
+is an installed-environment identity, not a newly generated dependency lock.
+Vendor API reference: https://openrouter.ai/docs/guides/routing/provider-selection
+and https://openrouter.ai/docs/cookbook/administration/usage-accounting. Public
+endpoint metadata is reacquired before the finite run; weights, exact precision,
+provider internal attempts and billing correctness remain provider-reported or
+unobservable, never independently attested by this probe.
