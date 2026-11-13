@@ -93,7 +93,7 @@ def manifest():
 
 
 def validate_external_manifest(value):
-    if value != manifest():
+    if value not in (manifest(), walkthrough_manifest()):
         raise ValueError("external smoke requires the fixed bounded profile")
 
 
@@ -158,6 +158,16 @@ def validate_catalog(value):
 class SmokeGuard:
     """Append-only consumed attempts. A used run cannot be resumed or overwritten."""
 
+    cases = CASES
+    budget = BUDGET
+    request_limit = 4
+    body_for = staticmethod(case_body)
+    profile_manifest = staticmethod(manifest)
+
+    def validate_manifest(self, value):
+        if value != self.profile_manifest():
+            raise ValueError("guard and manifest profiles differ")
+
     def __init__(self, directory, catalog, prior=None):
         if not 0 <= time.time() - catalog["observed_at"] < 300:
             raise ValueError("fresh catalog required")
@@ -184,9 +194,9 @@ class SmokeGuard:
             {
                 "event": "created",
                 "catalog": catalog,
-                "budget_usd": BUDGET,
+                "budget_usd": self.budget,
                 "deadline": self.deadline,
-                "max_requests": 4,
+                "max_requests": self.request_limit,
                 "prior": prior,
             }
         )
@@ -208,8 +218,8 @@ class SmokeGuard:
 
     def check_body(self, body):
         self.check()
-        for case in CASES:
-            if body == case_body(case):
+        for case in self.cases:
+            if body == self.body_for(case):
                 if case["name"] in self.blocked_cases:
                     raise Denied("prior_case_already_consumed")
                 return case["name"]
@@ -222,13 +232,13 @@ class SmokeGuard:
                 a["state"] != "complete" for a in self.attempts.values()
             ):
                 raise Denied("smoke_replay_or_unresolved_attempt")
-            if len(self.attempts) + len(self.blocked_cases) >= 4:
+            if len(self.attempts) + len(self.blocked_cases) >= self.request_limit:
                 raise Denied("smoke_request_limit")
             attempt = {
                 "case": name,
                 "request_id": request_id,
                 "state": "pending",
-                "reserved_usd": BUDGET / 4,
+                "reserved_usd": self.budget / self.request_limit,
                 "dispatches": 0,
                 "provider": None,
                 "model": None,
@@ -321,3 +331,61 @@ class SmokeGuard:
                 a["usage"]["cost"] for a in values if a["state"] == "complete"
             ),
         }
+
+
+WALKTHROUGH_SYSTEM = (
+    "You are a tutor in an explicitly synthetic instructor rehearsal. "
+    "Give one brief conceptual hint, not solution code or a grade. "
+    'Return only JSON with exactly one nonempty string field "hint".'
+)
+WALKTHROUGH_CASES = [
+    {
+        "name": "fast_hint",
+        "tier": "fast",
+        "alias": "code_small",
+        "role": "planner",
+        "prompt": "Synthetic lesson: a table has station, day1 and day2 columns. "
+        "I need one observation per station and day. What should I think about first?",
+    },
+    {
+        "name": "strong_hint",
+        "tier": "strong",
+        "alias": "code_large",
+        "role": "reasoner",
+        "prompt": "Synthetic lesson: I reshaped station temperatures into long form. "
+        "How can I check whether missing measurements were accidentally dropped?",
+    },
+]
+
+
+def walkthrough_body(case):
+    return {
+        "model": case["alias"],
+        "messages": [
+            {"role": "system", "content": WALKTHROUGH_SYSTEM},
+            {"role": "user", "content": case["prompt"]},
+        ],
+        "max_tokens": 128,
+        "temperature": 0.0,
+        "response_format": {"type": "json_object"},
+    }
+
+
+def walkthrough_manifest():
+    value = manifest()
+    value["project_allowance"] = value["participant_allowance"] = 4096
+    value["models"]["code_large"] = copy.deepcopy(value["models"]["code_small"])
+    return value
+
+
+class WalkthroughGuard(SmokeGuard):
+    """Separate finite two-tier profile; never resumes the original smoke run."""
+
+    cases = WALKTHROUGH_CASES
+    budget = 0.025
+    request_limit = 2
+    body_for = staticmethod(walkthrough_body)
+    profile_manifest = staticmethod(walkthrough_manifest)
+
+    def __init__(self, directory, catalog):
+        super().__init__(directory, catalog)

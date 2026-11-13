@@ -367,6 +367,7 @@ class Gateway(ThreadingHTTPServer):
             validate_external_manifest(manifest)
             if not isinstance(external_guard, SmokeGuard) or address[0] != "127.0.0.1":
                 raise ValueError("external smoke requires a one-shot guard and loopback")
+            external_guard.validate_manifest(manifest)
             authority = urlsplit(authority_url)
             if authority.scheme != "http" or authority.hostname != "127.0.0.1":
                 raise ValueError("external smoke requires synthetic loopback authority")
@@ -528,6 +529,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if external is not None:
                 validate_external_manifest(self.server.manifest)
+                external.validate_manifest(self.server.manifest)
                 if self.command != "POST" or self.path != "/v1/chat/completions":
                     raise Denied("smoke_operation_not_allowed")
                 self.external_body = self.body()

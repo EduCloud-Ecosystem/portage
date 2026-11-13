@@ -161,7 +161,7 @@ def test_finite_four_case_budget_and_no_replay(tmp_path):
 
 
 @pytest.fixture
-def connected(tmp_path, monkeypatch):
+def connected(tmp_path, monkeypatch, request):
     state = {
         "active": True,
         "requests": [],
@@ -202,7 +202,8 @@ def connected(tmp_path, monkeypatch):
     authority = ThreadingHTTPServer(("127.0.0.1", 0), Authority)
     authority_thread = threading.Thread(target=authority.serve_forever, daemon=True)
     authority_thread.start()
-    guard = SmokeGuard(tmp_path / "run", catalog())
+    guard_type = getattr(request, "param", SmokeGuard)
+    guard = guard_type(tmp_path / "run", catalog())
     ledger = gateway.Ledger(tmp_path / "ledger.sqlite")
     ledger.project("smoke001", 8192, 1)
     ledger.member("smoke001", "synthetic01", 8192)
@@ -210,7 +211,7 @@ def connected(tmp_path, monkeypatch):
     service = gateway.Gateway(
         ("127.0.0.1", 0),
         ledger,
-        manifest(),
+        guard.profile_manifest(),
         "control",
         "sk-or-test-only",
         f"http://127.0.0.1:{authority.server_port}",
