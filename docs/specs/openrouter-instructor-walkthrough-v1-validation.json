@@ -1,0 +1,173 @@
+{
+  "status": "synthetic_two_tier_browser_integration_verified",
+  "source": "11bf330995af6b1a570c5501d0c616a2cd391f1a",
+  "base": "af40ab0501bb9f8283efa0d7ef0aa546b06c3851",
+  "branch": "codex/openrouter-instructor-walkthrough-v1",
+  "worktree": "/Users/gregchism/dev/.educloud-worktrees/portage-system-one-shadow-pilot-v1",
+  "belay_source": "c5a27073e74b9eeb7ab697190915378b50132883",
+  "belay_worktree": "/Users/gregchism/dev/.educloud-worktrees/belay-classroom-system-one-consumer-v1",
+  "environment": {
+    "python": "3.12.13",
+    "portage_uv_lock_sha256": "434732cdb329e541abed8dd64d54899640216bfbb00f463f33faf4e69c9ebef4",
+    "belay_uv_lock_sha256": "e50d5e0518d8b4f23b09d4c04f71f5b34c60435e774c40ec598c413c449fa80a",
+    "fresh_install_executed": false
+  },
+  "offline": {
+    "full_suite": {
+      "passed": 572,
+      "skipped": 8,
+      "failed": 0,
+      "note": "collected before the final additional JSON-repair test was added; that test passed separately"
+    },
+    "final_focused": {
+      "passed": 10,
+      "skipped": 2,
+      "failed": 0
+    },
+    "actual_belay_sdk_checks": {
+      "passed": 3,
+      "failed": 0
+    },
+    "ruff": "passed",
+    "format": "passed",
+    "generated_profiles": "3 unchanged",
+    "diff_check": "passed"
+  },
+  "live": {
+    "transport_dispatches": 2,
+    "successful": 2,
+    "failed": 0,
+    "sdk_retries": 0,
+    "provider_internal_retries": "unobservable",
+    "tokens": 229,
+    "provider_reported_cost_usd": 0.0001864,
+    "unknown_liability_this_session_usd": 0,
+    "prior_unknown_reserve_usd": 0.025,
+    "belay_settled_attempts": 2,
+    "portage_complete_attempts": 2,
+    "owned_servers_closed": true,
+    "console_port_connection_refused": true
+  },
+  "browser": {
+    "observed": [
+      "fast hint",
+      "strong hint",
+      "disabled consumed actions",
+      "evidence refresh without replay",
+      "full page reload without replay",
+      "membership revocation",
+      "stop"
+    ],
+    "screenshot": ".qualification/openrouter/evidence/instructor-01/browser-completed.jpg",
+    "viewport": "default desktop",
+    "responsive_mobile": "unexecuted",
+    "chrome_extension_open": "failed twice with timeoutMs tooling error; no inference involved",
+    "in_app_browser": "passed"
+  },
+  "failures_retained": [
+    "initial import-order lint failures",
+    "two focused assertions expected 403 but observed existing unresolved concurrency hold 429; corrected expected semantics without changing production refusal",
+    "Chrome tab creation tool failures",
+    "prior ZDR smoke failures remain unchanged"
+  ],
+  "instructional_review": {
+    "status": "pending_human_review",
+    "finding": "Strong hint suggests row-count comparison without specifying expected wide-to-long expansion; checking missing values only in the result cannot establish preservation of previously missing records."
+  },
+  "readiness": {
+    "provider_console": true,
+    "ordinary_classroom_presenter": false,
+    "real_student_data": false,
+    "merged": false,
+    "deployed": false,
+    "colony_experiment": false
+  },
+  "next_step": "Migrate actual classroom presenter to existing canonical enrollment binding and scoped runner envelope, then verify notebook -> tutor -> saved-file submission -> receipt journey.",
+  "artifacts": {
+    ".qualification/openrouter/evidence/instructor-01/belay.sqlite": {
+      "bytes": 114688,
+      "sha256": "3b86ba9e5ef7c2e1057e9645550f2737a2fe6149b2aa840591289b050a96d5ee"
+    },
+    ".qualification/openrouter/evidence/instructor-01/browser-completed.jpg": {
+      "bytes": 145731,
+      "sha256": "ce834b0d7b92ecbe98a5a350e7f0f025d937e2740a7ad0cc096148eb08f79947"
+    },
+    ".qualification/openrouter/evidence/instructor-01/catalog.json": {
+      "bytes": 4994,
+      "sha256": "9f4898a1e1ca514dc6822df6ce2ed540dcb2f525618102814f468b093a30dc6a"
+    },
+    ".qualification/openrouter/evidence/instructor-01/fast_hint.upstream.jsonl": {
+      "bytes": 1060,
+      "sha256": "d774fa59dbc9e20013875d1860cdc9323338cb8442467f93643efdc3057ceb36"
+    },
+    ".qualification/openrouter/evidence/instructor-01/independent-readback.json": {
+      "bytes": 2522,
+      "sha256": "9e3012e746e09f76997248e35542a786a39efca445f66abd87d8770bb3c3fa56"
+    },
+    ".qualification/openrouter/evidence/instructor-01/journal.jsonl": {
+      "bytes": 2270,
+      "sha256": "70e1ab863ac4f1abb693e035af8cf39f2b8317154381abe5847f2562fe43e6a1"
+    },
+    ".qualification/openrouter/evidence/instructor-01/portage.sqlite": {
+      "bytes": 57344,
+      "sha256": "78a684c3e6b2c2cbf75c5069f45cef1b8047902ff8f00923bcc2062b49f2c122"
+    },
+    ".qualification/openrouter/evidence/instructor-01/portage.sqlite-shm": {
+      "bytes": 32768,
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb"
+    },
+    ".qualification/openrouter/evidence/instructor-01/portage.sqlite-wal": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    ".qualification/openrouter/evidence/instructor-01/result.json": {
+      "bytes": 4701,
+      "sha256": "caf50e84f6eb9d60ca68dfe673643487166debb2781bf0c87922c6c3e7afc03a"
+    },
+    ".qualification/openrouter/evidence/instructor-01/strong_hint.upstream.jsonl": {
+      "bytes": 1036,
+      "sha256": "9ae0fa9735f70b4f0d8ab661b59f79fc73a77bdc989e674d426e2b325025bb0e"
+    },
+    ".qualification/openrouter/walkthrough-validation/belay-sdk-01.txt": {
+      "bytes": 80,
+      "sha256": "423b1d0e014eb1eab96f4420f7b344c2615be505dd574b756ac884826ca74f2d"
+    },
+    ".qualification/openrouter/walkthrough-validation/belay-sdk-02.txt": {
+      "bytes": 113,
+      "sha256": "0c8ba4fb18a736b2ab6dcff188de6326f0f324504452e675255797a79c400c98"
+    },
+    ".qualification/openrouter/walkthrough-validation/belay-sdk-final.txt": {
+      "bytes": 98,
+      "sha256": "5d582027601576fc1b9bac651828714de4e5b45d39b6d8ce8012720e13ecdd64"
+    },
+    ".qualification/openrouter/walkthrough-validation/focused-01.txt": {
+      "bytes": 2504,
+      "sha256": "f873968792c1d944bec3a122346de08dfb7cb4446bd04b9155321c54befc1a7b"
+    },
+    ".qualification/openrouter/walkthrough-validation/focused-02.txt": {
+      "bytes": 80,
+      "sha256": "d01b234997c8a54af88c8af30ad124aa76b8c01d21f4f97d229f57671560b89d"
+    },
+    ".qualification/openrouter/walkthrough-validation/focused-final.txt": {
+      "bytes": 389,
+      "sha256": "f411cfe26e85ff4ed38acbf9636236274bec6dbb26e91e8a9bbdd40b8170548d"
+    },
+    ".qualification/openrouter/walkthrough-validation/format-01.txt": {
+      "bytes": 26,
+      "sha256": "f114d83b30c5c657ee43a847a45bafccaea255d82673feb87c26d252c61e29c1"
+    },
+    ".qualification/openrouter/walkthrough-validation/full-01.txt": {
+      "bytes": 1216,
+      "sha256": "312cd5958a2ad4949a4ddfa40d69093a73bc4b145c94a659b8da6ef399629330"
+    },
+    ".qualification/openrouter/walkthrough-validation/lint-01.txt": {
+      "bytes": 4434,
+      "sha256": "facf221d1c50ad73e7109a85ba940c2771df16c00a976c7d6a6b625a1d9e0f35"
+    },
+    ".qualification/openrouter/walkthrough-validation/lint-02.txt": {
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    }
+  },
+  "recorded_at_utc": "2026-11-13T03:08:19.575323+00:00"
+}

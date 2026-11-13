@@ -100,3 +100,48 @@ in the output directory along with separate Belay and Portage ledgers. Model
 quality is a human-review item; the executable evaluator checks structure and
 accounting only. Refused JSON-repair calls are included in Belay attempt counts
 but must not create another external transport request.
+
+## Verified checkpoint
+
+Implementation source: 11bf330995af6b1a570c5501d0c616a2cd391f1a. Belay source
+remains c5a27073e74b9eeb7ab697190915378b50132883 and clean. No application source
+outside this Portage branch changed. No merge, deployment or CI result is claimed.
+
+Full offline suite: 572 passed, 8 skipped (six missing sibling verifier-contract
+cases and two separately run Belay SDK cases). The final added JSON-repair test
+was subsequently run with the actual Belay environment; all three SDK checks
+passed. Final focused suite: 10 passed, two environment skips covered separately.
+Lint, format, diff check and all three generated profile checks passed.
+Two initial assertions expected 403; the retained unknown ledger concurrency
+hold correctly returned 429 instead. These failed controls and initial lint
+outputs remain in .qualification/openrouter/walkthrough-validation/.
+
+Live browser session: .qualification/openrouter/evidence/instructor-01/.
+Both fast and strong actions succeeded: two actual external dispatches, zero SDK
+retries, 229 tokens, USD 0.0001864 provider-reported cost. Portage independently
+read back code_small/120 and code_large/109 as complete; Belay has two settled
+attempts totaling 229 tokens. Belay's policy-priced 308 microunits is a local
+accounting estimate, not the provider's invoice. No new unknown liability;
+earlier USD 0.025 unknown reservations remain unresolved and untouched.
+
+Rendered desktop layout, actions, disabled consumed buttons, refresh, full-page
+reload, revocation and stop were observed through the in-app browser. Chrome
+extension tab creation failed twice before any model action; in-app fallback
+worked. Mobile layout was not independently inspected. The process exited zero,
+result.json records owned_servers_closed=true, and the console port refused a
+fresh connection. No services remain running from this session.
+
+Instructional acceptance remains pending. In particular, the second hint's
+row-count comparison needs an expected expansion count for a wide-to-long
+transformation, and checking only the resulting missing values cannot prove
+preservation. This is retained as a quality-review finding, not reclassified as
+a transport failure or repaired by spending on another call.
+
+Next concrete application work: migrate the existing classroom presenter onto
+its canonical enrollment path and a pinned runner/admission envelope, preserving
+saved-file submission and Cairn grading authority. Then verify the actual
+notebook -> tutor -> saved-file submission -> receipt journey. This new console
+proves the two provider tier seams; it does not complete that classroom journey.
+Fresh environment reconstruction, instructional review, approved destinations
+and retention, institutional login/hosting, and real-learner authorization remain
+separate gates. Do not auto-restart the completed paid walkthrough.
