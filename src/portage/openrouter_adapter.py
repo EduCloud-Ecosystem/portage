@@ -93,7 +93,9 @@ def manifest():
 
 
 def validate_external_manifest(value):
-    if value not in (manifest(), walkthrough_manifest()):
+    from notebook_adapter import notebook_manifest
+
+    if value not in (manifest(), walkthrough_manifest(), notebook_manifest()):
         raise ValueError("external smoke requires the fixed bounded profile")
 
 
@@ -161,6 +163,7 @@ class SmokeGuard:
     cases = CASES
     budget = BUDGET
     request_limit = 4
+    token_limit = 2048
     body_for = staticmethod(case_body)
     profile_manifest = staticmethod(manifest)
 
@@ -306,7 +309,7 @@ class SmokeGuard:
                 and attempt["model"]
                 in {MODEL, CANONICAL, CANONICAL.removeprefix("openai/")}
                 and type(tokens) is int
-                and 0 <= tokens <= 2048
+                and 0 <= tokens <= self.token_limit
                 and type(cost) in {int, float}
                 and math.isfinite(cost)
                 and 0 <= cost <= attempt["reserved_usd"]
