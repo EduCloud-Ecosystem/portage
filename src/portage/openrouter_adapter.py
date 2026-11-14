@@ -93,9 +93,14 @@ def manifest():
 
 
 def validate_external_manifest(value):
-    from notebook_adapter import notebook_manifest
+    from notebook_adapter import nhanes_manifest, notebook_manifest
 
-    if value not in (manifest(), walkthrough_manifest(), notebook_manifest()):
+    if value not in (
+        manifest(),
+        walkthrough_manifest(),
+        notebook_manifest(),
+        nhanes_manifest(),
+    ):
         raise ValueError("external smoke requires the fixed bounded profile")
 
 

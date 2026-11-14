@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from test_openrouter_pilot import catalog, result
+from test_openrouter_pilot import catalog, gateway, result
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src/portage"))
 from notebook_adapter import (  # noqa: E402
@@ -170,3 +170,46 @@ def test_unknown_holds_and_expiry(tmp_path):
     with pytest.raises(Denied):
         other.start(body("planner"), "expired")
     assert not other.attempts
+
+
+def test_real_gateway_accepts_only_exact_nhanes_guard_and_manifest(tmp_path):
+    guard = NhanesNotebookGuard(tmp_path / "nhanes", catalog(), CONTEXT, SYSTEMS)
+    value = nhanes_manifest()
+    validate_external_manifest(value)
+    service = gateway.Gateway(
+        ("127.0.0.1", 0),
+        None,
+        value,
+        "synthetic",
+        "synthetic",
+        "http://127.0.0.1:1",
+        "synthetic",
+        external_guard=guard,
+    )
+    service.server_close()
+    for field, changed in (("project_allowance", 999999), ("concurrency", 2)):
+        mutated = {**value, field: changed}
+        with pytest.raises(ValueError):
+            gateway.Gateway(
+                ("127.0.0.1", 0),
+                None,
+                mutated,
+                "",
+                "",
+                "http://127.0.0.1:1",
+                "",
+                external_guard=guard,
+            )
+    wrong = NotebookGuard(tmp_path / "echo", catalog(), CONTEXT, SYSTEMS)
+    with pytest.raises(ValueError):
+        gateway.Gateway(
+            ("127.0.0.1", 0),
+            None,
+            value,
+            "",
+            "",
+            "http://127.0.0.1:1",
+            "",
+            external_guard=wrong,
+        )
+    assert guard.summary()["dispatch_claims"] == 0
