@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EduCloud · Instructor tier walkthrough</title>
+<style>
+:root{font:17px/1.5 system-ui,sans-serif;color:#17332f;background:#f4f7f5}*{box-sizing:border-box}body{margin:0}main{max-width:1000px;margin:auto;padding:36px 24px}h1{font-size:2rem;line-height:1.2;margin:8px 0 16px}h2{font-size:1.25rem;margin:0}.eyebrow{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:#49685f}.notice{border-left:4px solid #b68121;background:#fff4dc;padding:14px 18px}.cards{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:26px 0}.card{background:white;border:1px solid #cad9d2;border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:14px}.card p{margin:0}.prompt{flex-grow:1}.route{font-size:.85rem;color:#526a63}button{font:inherit;font-weight:600;border:0;border-radius:7px;padding:12px 16px;background:#155d50;color:white;cursor:pointer}button:disabled{background:#d4ded9;color:#52645b;cursor:default}button:focus-visible{outline:3px solid #b68121;outline-offset:3px}.output{white-space:pre-wrap;overflow-wrap:anywhere;min-height:70px;border-top:1px solid #dce6e0;padding-top:12px}.status{padding:18px;background:#e4ede8;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere}footer{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}footer button{background:#4d5f59}small{display:block;color:#52645b}#message{min-height:28px}@media(max-width:650px){.cards{grid-template-columns:1fr}main{padding:24px 16px}h1{font-size:1.65rem}}
+</style></head><body><main>
+<div class="eyebrow">EduCloud / instructor integration check</div>
+<h1>Two tutor tiers. One traceable path.</h1>
+<p>Belay → Portage → OpenRouter. Review a synthetic lesson hint from each tutor tier.</p>
+<div class="notice"><strong>Synthetic inputs only.</strong> This console uses two fixed prompts. Both tiers currently use the same GPT-4.1 mini endpoint; this checks routing, not a difference in reasoning quality. No student work, enrollment, grading or code execution occurs here.</div>
+<div class="cards" id="cards"></div>
+<h2>Session evidence</h2><p class="status" id="status" role="status">Loading session…</p>
+<p id="message" role="alert"></p>
+<footer><button id="refresh">Refresh evidence</button><button id="revoke">Revoke synthetic membership</button><button id="stop">Stop session</button></footer>
+<small>Two requests maximum · $0.025 application reserve · ten-minute window · no transport retries.<br>Earlier failed requests retain a separate $0.025 unresolved reserve. Provider charges are reported, not independently audited. Instructional quality still needs human review.</small>
+</main><script nonce="__NONCE__">
+const nonce='__NONCE__';let busy=false,stopped=false;
+const message=document.querySelector('#message');
+async function request(path,body){const r=await fetch(path,body===undefined?{cache:'no-store'}:{method:'POST',headers:{'Content-Type':'application/json','X-Walkthrough-Nonce':nonce},body:JSON.stringify(body)});const v=await r.json();if(!r.ok)throw new Error(v.error||'Attempt failed; inspect retained evidence.');return v;}
+function draw(s){
+ const cards=document.querySelector('#cards');cards.replaceChildren();
+ for(const c of s.cases){const card=document.createElement('section');card.className='card';const heading=document.createElement('h2');heading.textContent=c.tier==='fast'?'Fast · shape the question':'Strong · check the result';const route=document.createElement('p');route.className='route';route.textContent=`Belay ${c.tier} → ${c.alias} → ${s.model}`;const prompt=document.createElement('p');prompt.className='prompt';prompt.textContent=c.prompt;const button=document.createElement('button');button.dataset.case=c.name;const result=s.results[c.name];button.textContent=result?'Attempt recorded':`Ask ${c.tier} tutor`;button.disabled=busy||stopped||!s.active||s.remaining_seconds<=0||!!result||Object.values(s.results).some(r=>!r.passed);button.onclick=()=>run(c.name);const output=document.createElement('div');output.className='output';output.setAttribute('aria-live','polite');output.textContent=result?(result.output?.hint||`Attempt ${result.status}. ${result.error_type||'See evidence.'}`):'No request made yet.';card.append(heading,route,prompt,button,output);cards.append(card);}
+ const a=s.accounting;document.querySelector('#status').textContent=`${s.active?'Active':'Stopped or revoked'} · ${s.remaining_seconds}s remaining\nTransport dispatches: ${a.dispatch_claims}/2 · SDK retries: ${a.sdk_retries}\nProvider-reported cost: $${a.reported_cost_usd.toFixed(7)} · Unresolved reserve this session: $${a.unknown_liability_usd.toFixed(4)}\nAcceptance: ${Object.values(s.results).filter(r=>r.passed).length}/2 structural checks; instructional review pending.`;
+}
+async function refresh(){try{draw(await request('/status'));}catch(e){message.textContent=stopped?'Session stopped. Evidence remains on disk.':e.message;}}
+async function run(name){busy=true;document.querySelectorAll('[data-case]').forEach(b=>b.disabled=true);message.textContent='Waiting for the tutor. This action will not be retried.';try{await request('/run',{case:name});message.textContent='Result recorded. Review the hint and accounting below.';}catch(e){message.textContent=e.message;}finally{busy=false;await refresh();}}
+document.querySelector('#refresh').onclick=refresh;
+document.querySelector('#revoke').onclick=async()=>{try{await request('/revoke',{});message.textContent='Synthetic membership revoked. No further requests are allowed.';await refresh();}catch(e){message.textContent=e.message;}};
+document.querySelector('#stop').onclick=async()=>{try{await request('/stop',{});stopped=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);document.querySelector('#status').textContent='Session stopped. Owned listeners are closing; evidence is retained on disk.';message.textContent='No further requests are allowed.';}catch(e){message.textContent=e.message;}};
+refresh();
+</script></body></html>

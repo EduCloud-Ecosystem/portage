@@ -63,6 +63,9 @@ class Ledger:
             CREATE INDEX IF NOT EXISTS usage_scope ON requests(project,subject,state);
             CREATE TABLE IF NOT EXISTS reconciliations (
                 request TEXT PRIMARY KEY, evidence TEXT NOT NULL, recorded REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS shadow_decisions (
+                request TEXT PRIMARY KEY REFERENCES requests(id),
+                report TEXT NOT NULL);
             """)
 
     @classmethod
@@ -337,6 +340,19 @@ class Ledger:
             db.execute(
                 "UPDATE requests SET actual=?,state=? WHERE id=? AND state='pending'",
                 (usage, "complete" if usage is not None else "unknown", request),
+            )
+
+    def record_shadow_decision(self, request: str, report: dict):
+        """Internal typed metadata only; no prompt, response, or exception text."""
+        with self.transaction() as db:
+            row = db.execute(
+                "SELECT state FROM requests WHERE id=?", (request,)
+            ).fetchone()
+            if not row or row["state"] != "pending":
+                raise Denied("shadow_requires_pending_attempt")
+            db.execute(
+                "INSERT INTO shadow_decisions VALUES(?,?)",
+                (request, json.dumps(report, allow_nan=False, sort_keys=True)),
             )
 
     def reconcile(self, request: str, usage: int, evidence: str):
