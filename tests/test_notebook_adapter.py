@@ -6,10 +6,15 @@ import sys
 from pathlib import Path
 
 import pytest
-from test_openrouter_pilot import catalog, result
+from test_openrouter_pilot import catalog, gateway, result
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src/portage"))
-from notebook_adapter import NotebookGuard, notebook_manifest  # noqa: E402
+from notebook_adapter import (  # noqa: E402
+    NhanesNotebookGuard,
+    NotebookGuard,
+    nhanes_manifest,
+    notebook_manifest,
+)
 from openrouter_adapter import (  # noqa: E402
     SmokeGuard,
     manifest,
@@ -28,6 +33,42 @@ SYSTEMS = {
     "reasoner": "fixed reasoner",
     "self_eval": "fixed eval",
 }
+
+
+def test_nhanes_context_ceiling_is_separate_and_transport_budget_unchanged(tmp_path):
+    context = {**CONTEXT, "current_functional_model": "x" * 16000}
+    raw = body("planner")
+    raw["messages"][1]["content"] = json.dumps(context)
+    with pytest.raises(Denied):
+        prepare_request(raw, notebook_manifest()["models"], "chat/completions")
+    _, reserved = prepare_request(raw, nhanes_manifest()["models"], "chat/completions")
+    assert 16384 < reserved <= 24576
+    guard = NhanesNotebookGuard(tmp_path / "nhanes", catalog(), context, SYSTEMS)
+    guard.validate_manifest(nhanes_manifest())
+    with pytest.raises(ValueError):
+        guard.validate_manifest(notebook_manifest())
+    assert guard.budget == 0.175 and guard.request_limit == 7
+    assert notebook_manifest()["models"]["code_small"]["max_request_tokens"] == 16384
+    assert nhanes_manifest()["project"] == "nhanes01"
+    name = guard.start(raw, "nhanes")
+    guard.claim(name)
+    assert not guard.finish(name)
+    assert guard.summary()["unknown_liability_usd"] == pytest.approx(0.025)
+    with pytest.raises(Denied):
+        guard.start(raw, "repeat")
+    assert guard.summary()["dispatch_claims"] == 1
+
+
+def test_nhanes_rejects_oversize_and_changed_context_before_dispatch(tmp_path):
+    guard = NhanesNotebookGuard(tmp_path / "nhanes", catalog(), CONTEXT, SYSTEMS)
+    raw = body("planner")
+    raw["messages"][1]["content"] = json.dumps({**CONTEXT, "extra": "unapproved"})
+    with pytest.raises(Denied):
+        guard.start(raw, "tampered")
+    raw["messages"][1]["content"] = "x" * 24576
+    with pytest.raises(Denied):
+        prepare_request(raw, nhanes_manifest()["models"], "chat/completions")
+    assert guard.summary()["dispatch_claims"] == 0
 
 
 def body(stage):
@@ -129,3 +170,46 @@ def test_unknown_holds_and_expiry(tmp_path):
     with pytest.raises(Denied):
         other.start(body("planner"), "expired")
     assert not other.attempts
+
+
+def test_real_gateway_accepts_only_exact_nhanes_guard_and_manifest(tmp_path):
+    guard = NhanesNotebookGuard(tmp_path / "nhanes", catalog(), CONTEXT, SYSTEMS)
+    value = nhanes_manifest()
+    validate_external_manifest(value)
+    service = gateway.Gateway(
+        ("127.0.0.1", 0),
+        None,
+        value,
+        "synthetic",
+        "synthetic",
+        "http://127.0.0.1:1",
+        "synthetic",
+        external_guard=guard,
+    )
+    service.server_close()
+    for field, changed in (("project_allowance", 999999), ("concurrency", 2)):
+        mutated = {**value, field: changed}
+        with pytest.raises(ValueError):
+            gateway.Gateway(
+                ("127.0.0.1", 0),
+                None,
+                mutated,
+                "",
+                "",
+                "http://127.0.0.1:1",
+                "",
+                external_guard=guard,
+            )
+    wrong = NotebookGuard(tmp_path / "echo", catalog(), CONTEXT, SYSTEMS)
+    with pytest.raises(ValueError):
+        gateway.Gateway(
+            ("127.0.0.1", 0),
+            None,
+            value,
+            "",
+            "",
+            "http://127.0.0.1:1",
+            "",
+            external_guard=wrong,
+        )
+    assert guard.summary()["dispatch_claims"] == 0

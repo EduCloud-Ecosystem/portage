@@ -23,6 +23,16 @@ def notebook_manifest():
     return value
 
 
+def nhanes_manifest():
+    """Separate public/synthetic course profile; echo limits stay unchanged."""
+    value = notebook_manifest()
+    value["project"] = "nhanes01"
+    value["project_allowance"] = value["participant_allowance"] = 7 * 24576
+    for model in value["models"].values():
+        model["max_request_tokens"] = 24576
+    return value
+
+
 class NotebookGuard(SmokeGuard):
     """Only fixed context plus responses derived from this finite model session."""
 
@@ -125,3 +135,10 @@ class NotebookGuard(SmokeGuard):
             if not valid:
                 raise Denied("notebook_fixed_context_required", 400)
             return f"{slot + 1:02d}-{stage}"
+
+
+class NhanesNotebookGuard(NotebookGuard):
+    """Room for the pinned NHANES context, with identical cash/attempt limits."""
+
+    token_limit = 24576
+    profile_manifest = staticmethod(nhanes_manifest)
