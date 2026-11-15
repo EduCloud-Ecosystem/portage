@@ -81,3 +81,7 @@ Where things are: `../educloud/SYSTEM.md` (shared contracts),
 actual rendered deployment — check this, not just specs, before assuming a
 change shipped), Parity Bench (benchmarks per-endpoint before production
 traffic — invoke it, don't re-invent verification for a new provider row).
+
+## Pilot implementation standard
+
+Follow `AGENTS.md` and `docs/development/PILOT_PROTOCOL_V1.md` in addition to this component guidance. The classroom pilot tutor is `belay-classroom`; original Belay is a separate line. Current integration and release evidence live in the educloud README and `pilot/` records.

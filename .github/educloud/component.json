@@ -1,0 +1,13 @@
+{
+  "protocol_version": "educloud-pilot-v1",
+  "protocol_sha256": "099b676f0763440c7979657971260ed417750c73dd2954960ff8cb81bf9c6ce6",
+  "repository": "portage",
+  "authority": "Model routing, admission and transport/usage accounting",
+  "pilot_role": "Required for governed live model calls",
+  "required_workflows": [
+    "portage-ci.yml",
+    "direct-qualification.yml"
+  ],
+  "local_verification": "uv run pytest -q; retain generated profile re-render checks in portage-ci.yml.",
+  "integration_verification": "Run Belay-classroom consumer controls, real transport retry/accounting controls; paid endpoint qualification is separately authorized."
+}
