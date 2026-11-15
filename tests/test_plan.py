@@ -4,6 +4,7 @@ model calls: the FAILUP guard call is stubbed; acceptance/integration checks
 are real subprocess calls to the `true`/`false` shell builtins, not a network
 call.
 """
+
 import json
 
 import pytest
@@ -11,14 +12,20 @@ import pytest
 GOOD_PLAN = {
     "task": "add a feature",
     "subtasks": [
-        {"id": "a", "goal": "do a", "depends_on": [], "acceptance_check": "true"},
+        {
+            "id": "a",
+            "goal": "do a",
+            "depends_on": [],
+            "acceptance_check": 'python -c "import sys; sys.exit(0)"',
+        },
     ],
-    "integration_check": "true",
+    "integration_check": 'python -c "import sys; sys.exit(0)"',
     "risky_seams": [],
 }
 
 
 # --------------------------------------------------------------- extract_plan --
+
 
 def test_extract_plan_clean_json(plan_mod):
     raw = json.dumps(GOOD_PLAN)
@@ -37,8 +44,9 @@ def test_extract_plan_raises_when_no_json_present(plan_mod):
 
 # -------------------------------------------------------------- validate_plan --
 
+
 def test_validate_plan_accepts_a_good_plan(plan_mod):
-    plan_mod.validate_plan(GOOD_PLAN)   # must not raise
+    plan_mod.validate_plan(GOOD_PLAN)  # must not raise
 
 
 def test_validate_plan_rejects_missing_top_level_key(plan_mod):
@@ -55,6 +63,7 @@ def test_validate_plan_rejects_subtask_missing_required_field(plan_mod):
 
 
 # ------------------------------------------------------------------ toposort --
+
 
 def test_toposort_orders_by_dependency(plan_mod):
     subtasks = [
@@ -94,6 +103,7 @@ def test_toposort_raises_on_missing_dependency_id(plan_mod):
 
 # -------------------------------------------------------------------- do_run --
 
+
 def _write_plan(tmp_path, plan):
     p = tmp_path / "plan.json"
     p.write_text(json.dumps(plan))
@@ -108,8 +118,10 @@ def _patch_guard(monkeypatch, plan_mod, rc):
 
     def fake_run(cmd, cwd=None, timeout=1800, shell=False):
         if isinstance(cmd, list) and cmd[:2] == ["uv", "run"]:
+
             class FakeProc:
                 returncode = rc
+
             return FakeProc()
         return original_run(cmd, cwd=cwd, timeout=timeout, shell=shell)
 
@@ -119,6 +131,7 @@ def _patch_guard(monkeypatch, plan_mod, rc):
 def test_do_run_manual_stop_never_invokes_the_guard(plan_mod, tmp_path, monkeypatch):
     def exploding_run(*a, **k):
         raise AssertionError("MANUAL: subtasks must stop before any run() call")
+
     monkeypatch.setattr(plan_mod, "run", exploding_run)
 
     plan = json.loads(json.dumps(GOOD_PLAN))
@@ -130,12 +143,13 @@ def test_do_run_manual_stop_never_invokes_the_guard(plan_mod, tmp_path, monkeypa
     assert exc.value.code == 3
 
 
-def test_do_run_succeeds_when_guard_and_checks_pass(plan_mod, tmp_path, monkeypatch,
-                                                     capsys):
+def test_do_run_succeeds_when_guard_and_checks_pass(
+    plan_mod, tmp_path, monkeypatch, capsys
+):
     _patch_guard(monkeypatch, plan_mod, rc=0)
     plan_path = _write_plan(tmp_path, GOOD_PLAN)
 
-    plan_mod.do_run(plan_path, str(tmp_path))   # must not raise
+    plan_mod.do_run(plan_path, str(tmp_path))  # must not raise
 
     assert "integration check green" in capsys.readouterr().out
     log = tmp_path / ".claude" / "state" / "decomp-log.jsonl"

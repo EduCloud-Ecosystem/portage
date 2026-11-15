@@ -28,6 +28,7 @@ Design rules that keep a 7B classifier from becoming the problem:
   * IT IS ADVISORY. dispatch shows the decision and can be overridden. The
     fail-up guard remains the real correctness mechanism.
 """
+
 import json
 import os
 import re
@@ -43,19 +44,29 @@ CLASSIFIER_MODEL = os.environ.get("METERS_CLASSIFIER", "qwen2.5-coder:7b")
 
 SENSITIVE = re.compile(
     r"\b(clinical|patient|phi|hipaa|irb|student record|ferpa|identifiable|"
-    r"medical record|protected health)\b", re.I)
+    r"medical record|protected health)\b",
+    re.I,
+)
 
 OVERRIDE = re.compile(r"@(local|codex|claude|perplexity)\b", re.I)
 
 RESEARCH = re.compile(
     r"\b(literature review|prior art|state of the art|survey of|"
-    r"competitive scan|who (?:else )?(?:has|is) (?:built|doing))\b", re.I)
+    r"competitive scan|who (?:else )?(?:has|is) (?:built|doing))\b",
+    re.I,
+)
 
 # Signals that a coding task is underspecified enough to waste a real turn.
-VAGUE = re.compile(r"\b(fix (?:it|this|the bug)|make it (?:work|better|faster)|"
-                   r"clean (?:it|this) up|improve|refactor (?:it|this))\b", re.I)
-HAS_TARGET = re.compile(r"[\w/]+\.(py|ts|tsx|js|rs|go|md|json|toml|ya?ml)|"
-                        r"\b(function|class|module|endpoint|test)\b", re.I)
+VAGUE = re.compile(
+    r"\b(fix (?:it|this|the bug)|make it (?:work|better|faster)|"
+    r"clean (?:it|this) up|improve|refactor (?:it|this))\b",
+    re.I,
+)
+HAS_TARGET = re.compile(
+    r"[\w/]+\.(py|ts|tsx|js|rs|go|md|json|toml|ya?ml)|"
+    r"\b(function|class|module|endpoint|test)\b",
+    re.I,
+)
 
 
 def by_id(tid: str) -> dict:
@@ -65,19 +76,40 @@ def by_id(tid: str) -> dict:
 def deterministic(task: str) -> dict | None:
     """Rules that must never be delegated to a model."""
     if SENSITIVE.search(task):
-        return {"target": "local.big", "confidence": 1.0, "why": "sensitive-data pin",
-                "pinned": True, "missing": [], "clarify": None}
+        return {
+            "target": "local.big",
+            "confidence": 1.0,
+            "why": "sensitive-data pin",
+            "pinned": True,
+            "missing": [],
+            "clarify": None,
+        }
     m = OVERRIDE.search(task)
     if m:
         prov = m.group(1).lower()
-        tid = {"local": "local.big", "codex": "codex.default",
-               "claude": "claude.default", "perplexity": "perplexity.research"}[prov]
-        return {"target": tid, "confidence": 1.0, "why": f"explicit @{prov} override",
-                "pinned": True, "missing": [], "clarify": None}
+        tid = {
+            "local": "local.big",
+            "codex": "codex.default",
+            "claude": "claude.default",
+            "perplexity": "perplexity.research",
+        }[prov]
+        return {
+            "target": tid,
+            "confidence": 1.0,
+            "why": f"explicit @{prov} override",
+            "pinned": True,
+            "missing": [],
+            "clarify": None,
+        }
     if RESEARCH.search(task):
-        return {"target": "perplexity.research", "confidence": 0.9,
-                "why": "research phrasing — Opus-grade off the Claude wallet",
-                "pinned": False, "missing": [], "clarify": None}
+        return {
+            "target": "perplexity.research",
+            "confidence": 0.9,
+            "why": "research phrasing — Opus-grade off the Claude wallet",
+            "pinned": False,
+            "missing": [],
+            "clarify": None,
+        }
     return None
 
 
@@ -114,12 +146,16 @@ between two, pick the HIGHER ceiling. Do not invent target ids."""
 def ask_local(task: str) -> dict | None:
     lines = "\n".join(
         f"  {t['id']}  ceiling={t['ceiling']} cost={t['cost']} "
-        f"good_for={','.join(t['good_for'][:3])}" for t in CATALOG)
+        f"good_for={','.join(t['good_for'][:3])}"
+        for t in CATALOG
+    )
     try:
         r = subprocess.run(
-            ["ollama", "run", CLASSIFIER_MODEL,
-             PROMPT.format(catalog=lines, task=task)],
-            capture_output=True, text=True, timeout=60)
+            ["ollama", "run", CLASSIFIER_MODEL, PROMPT.format(catalog=lines, task=task)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
     except Exception:
         return None
     out = r.stdout.strip()
@@ -127,7 +163,7 @@ def ask_local(task: str) -> dict | None:
     if not (0 <= i < j):
         return None
     try:
-        d = json.loads(out[i:j + 1])
+        d = json.loads(out[i : j + 1])
     except json.JSONDecodeError:
         return None
     if not any(t["id"] == d.get("target") for t in CATALOG):
@@ -142,9 +178,16 @@ def escalate(tid: str) -> str:
     if cur.get("scarce"):
         return tid
     want = order[min(order.index(cur["ceiling"]) + 1, len(order) - 1)]
-    nxt = next((t for t in CATALOG
-                if t["ceiling"] == want and not t.get("scarce")
-                and t["provider"] != "perplexity"), None)
+    nxt = next(
+        (
+            t
+            for t in CATALOG
+            if t["ceiling"] == want
+            and not t.get("scarce")
+            and t["provider"] != "perplexity"
+        ),
+        None,
+    )
     return nxt["id"] if nxt else tid
 
 
@@ -167,11 +210,16 @@ def classify(task: str) -> dict:
     guess = ask_local(task)
     if not guess:
         # classifier unavailable or unusable -> safe middle, flagged
-        return _with_clarify({
-            "target": "claude.default", "confidence": 0.0,
-            "why": "classifier unavailable; safe default",
-            "missing": missing, "clarify": None, "pinned": False,
-        }) | {"source": "fallback"}
+        return _with_clarify(
+            {
+                "target": "claude.default",
+                "confidence": 0.0,
+                "why": "classifier unavailable; safe default",
+                "missing": missing,
+                "clarify": None,
+                "pinned": False,
+            }
+        ) | {"source": "fallback"}
 
     guess["missing"] = guess.get("missing") or missing
     if guess.get("confidence", 0) < 0.6:
@@ -200,13 +248,27 @@ def shape(task: str, target: dict) -> dict:
     lane = {"perplexity": "science"}.get(target["provider"], "code")
     try:
         r = subprocess.run(
-            [sys.executable, str(ROOT / "adapt.py"),
-             "--task", core, "--target", target["id"], "--lane", lane, "--json"],
-            capture_output=True, text=True, timeout=60)
+            [
+                sys.executable,
+                str(ROOT / "adapt.py"),
+                "--task",
+                core,
+                "--target",
+                target["id"],
+                "--lane",
+                lane,
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
         d = json.loads(r.stdout)
-        return {"original": original,
-                "prompt": d.get("prompt", core),
-                "template_id": d.get("template_id")}
+        return {
+            "original": original,
+            "prompt": d.get("prompt", core),
+            "template_id": d.get("template_id"),
+        }
     except Exception:
         return {"original": original, "prompt": core, "template_id": None}
 
@@ -218,14 +280,23 @@ def main():
     d = classify(task)
     t = by_id(d["target"])
     sh = shape(task, t)
-    print(json.dumps({
-        **d,
-        "provider": t["provider"], "model": t["model"], "effort": t["effort"],
-        "cost": t["cost"], "meter": t["meter"], "scarce": bool(t.get("scarce")),
-        "original": sh["original"],      # verbatim; downstream must keep this
-        "shaped": sh["prompt"],
-        "template_id": sh["template_id"],
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                **d,
+                "provider": t["provider"],
+                "model": t["model"],
+                "effort": t["effort"],
+                "cost": t["cost"],
+                "meter": t["meter"],
+                "scarce": bool(t.get("scarce")),
+                "original": sh["original"],  # verbatim; downstream must keep this
+                "shaped": sh["prompt"],
+                "template_id": sh["template_id"],
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

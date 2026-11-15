@@ -23,6 +23,7 @@ consulting the registry — for `sonnet`/`opus` that is the ONLY correct price
 source, since it's what the Max wallet actually billed, and registry price
 fields for those rungs would just be null anyway.
 """
+
 from __future__ import annotations
 
 # rung model string -> registry alias, or None with a reason if there isn't
@@ -40,21 +41,26 @@ RUNG_TO_ALIAS = {
 # Rungs with NO honest registry mapping, and why — read before adding one.
 NO_REGISTRY_EQUIVALENT = {
     "local-big": "retired: CW-04 §2.4 dropped the larger local-model tier; "
-                 "no alias in the Scale-1 registry occupies this role.",
+    "no alias in the Scale-1 registry occupies this role.",
     "sovereign-work": "Scale-2 concept (sovereign HPC/vLLM); the Scale-1 "
-                       "registry has no row for it.",
+    "registry has no row for it.",
     "sonnet": "Lane A, subscription-billed through the native Max wallet — "
-              "registry.yaml's proprietary_code row was DELETED by CC-P6, not "
-              "disabled, and should not be resurrected just for pricing. Use "
-              "the runner's own reported total_cost_usd instead.",
+    "registry.yaml's proprietary_code row was DELETED by CC-P6, not "
+    "disabled, and should not be resurrected just for pricing. Use "
+    "the runner's own reported total_cost_usd instead.",
     "opus": "same as sonnet.",
 }
 
 
-def price_for_rung(model: str, *, cost_usd: float | None,
-                    tokens_in: int | None, tokens_out: int | None,
-                    cache_read_tokens: int | None,
-                    price_table: dict) -> tuple[float | None, str]:
+def price_for_rung(
+    model: str,
+    *,
+    cost_usd: float | None,
+    tokens_in: int | None,
+    tokens_out: int | None,
+    cache_read_tokens: int | None,
+    price_table: dict,
+) -> tuple[float | None, str]:
     """(price_usd, basis). `basis` is always present, even when price is None,
     so a caller can report WHY a number is missing instead of just that it is.
 
@@ -85,8 +91,11 @@ def price_for_rung(model: str, *, cost_usd: float | None,
         return None, "unmapped-rung"
 
     rows = [r for r in price_table.get(alias, []) if r.get("enabled")]
-    price_keys = ("price_input_per_million", "price_output_per_million",
-                  "price_cache_hit_per_million")
+    price_keys = (
+        "price_input_per_million",
+        "price_output_per_million",
+        "price_cache_hit_per_million",
+    )
     distinct_prices = {tuple(r.get(k) for k in price_keys) for r in rows}
     # Ambiguity only matters when it changes the ANSWER. code_small has two
     # enabled occupants (gemma4:12b, gemma4:e4b) and both are $0 local — which

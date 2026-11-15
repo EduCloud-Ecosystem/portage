@@ -12,6 +12,7 @@ git status so the agent resumes grounded instead of re-exploring the repo.
 
 Deterministic: no model calls, zero quota.
 """
+
 import json
 import os
 import subprocess
@@ -54,12 +55,16 @@ def main() -> None:
 
     context = "\n\n".join(parts).strip()
     if context:
-        print(json.dumps({
-            "hookSpecificOutput": {
-                "hookEventName": "SessionStart",
-                "additionalContext": context,
-            }
-        }))
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "SessionStart",
+                        "additionalContext": context,
+                    }
+                }
+            )
+        )
     sys.exit(0)
 
 

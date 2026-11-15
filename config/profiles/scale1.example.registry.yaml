@@ -127,21 +127,6 @@ models:
     ifeval: null
     enabled: true
 
-  - alias: proprietary_code
-    provider_route: anthropic
-    model_id: claude-sonnet-5
-    open_weight: false
-    license: Proprietary
-    license_family: proprietary
-    max_context: 200000
-    supports_tools: true
-    supports_json: true
-    data_classification: public
-    benchmark_version: null
-    bfclv3: null
-    ifeval: null
-    enabled: false
-
   - alias: proprietary_research
     provider_route: perplexity
     model_id: sonar-deep-research

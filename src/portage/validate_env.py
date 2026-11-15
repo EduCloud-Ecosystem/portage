@@ -12,6 +12,7 @@ pre-boot Makefile/script target).
 
     python src/portage/validate_env.py --config ../portage-local/litellm/config.yaml
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,7 +40,7 @@ def collect_env_refs(doc: dict) -> set[str]:
     refs = set()
     for s in _walk_strings(doc):
         if s.startswith(PREFIX):
-            refs.add(s[len(PREFIX):])
+            refs.add(s[len(PREFIX) :])
     return refs
 
 

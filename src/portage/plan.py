@@ -19,6 +19,7 @@ stage harder than planned self-corrects upward. Accuracy is verified at the seam
 (per-stage acceptance via the guard + the final integration check), because
 nothing unit-tests a plan.
 """
+
 import argparse
 import json
 import os
@@ -30,7 +31,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 FAILUP = HERE / "failup.py"
-PLAN_MODEL = "claude-opus-4-8"   # planning is a T2 judgment task; never downshifted
+PLAN_MODEL = "claude-opus-4-8"  # planning is a T2 judgment task; never downshifted
 
 PLAN_PROMPT = """You are decomposing a large task for this repo. Explore as
 needed, then output ONLY a JSON object (no prose, no code fences) with keys:
@@ -52,7 +53,7 @@ REQUIRED_KEYS = {"task", "subtasks", "integration_check"}
 
 def _brace_slice(s: str):
     i, j = s.find("{"), s.rfind("}")
-    return s[i:j + 1] if 0 <= i < j else None
+    return s[i : j + 1] if 0 <= i < j else None
 
 
 def extract_plan(raw: str) -> dict:
@@ -87,8 +88,9 @@ def run(cmd, cwd=None, timeout=1800, shell=False):
     # argv lists). The wrapper never forwarded `shell` to subprocess.run, so
     # every such call raised TypeError — never caught because nothing had
     # exercised do_run's non-MANUAL path until these tests did.
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
-                          timeout=timeout, shell=shell)
+    return subprocess.run(
+        cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, shell=shell
+    )
 
 
 def state_dir(project: str) -> Path:
@@ -102,8 +104,10 @@ def do_plan(task: str, project: str) -> None:
     # bare model name/alias directly (docs/phase-1-findings.md). claude-code-router
     # is gone. This draws the interactive Max wallet, same as `failup.py`'s
     # default runner — planning and execution share one meter unless overridden.
-    proc = run(["claude", "-p", PLAN_PROMPT.format(task=task),
-                "--model", PLAN_MODEL], cwd=project)
+    proc = run(
+        ["claude", "-p", PLAN_PROMPT.format(task=task), "--model", PLAN_MODEL],
+        cwd=project,
+    )
     raw = proc.stdout.strip()
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     try:
@@ -112,15 +116,19 @@ def do_plan(task: str, project: str) -> None:
     except ValueError as err:
         dump = state_dir(project) / "plans" / f"{stamp}.raw.txt"
         dump.write_text(raw, encoding="utf-8")
-        print(f"[plan] {err}. Raw planner output saved to {dump.relative_to(project)}",
-              file=sys.stderr)
+        print(
+            f"[plan] {err}. Raw planner output saved to {dump.relative_to(project)}",
+            file=sys.stderr,
+        )
         sys.exit(1)
     out = state_dir(project) / "plans" / f"{stamp}.json"
     out.write_text(json.dumps(plan, indent=2), encoding="utf-8")
     print(f"[plan] saved {out.relative_to(project)}\n")
     print(json.dumps(plan, indent=2))
-    print("\n[plan] REVIEW this plan. To execute an approved plan:\n"
-          f"    src/portage/plan.py run --plan {out.relative_to(project)}")
+    print(
+        "\n[plan] REVIEW this plan. To execute an approved plan:\n"
+        f"    src/portage/plan.py run --plan {out.relative_to(project)}"
+    )
 
 
 def toposort(subtasks: list[dict]) -> list[dict]:
@@ -149,17 +157,26 @@ def do_run(plan_path: str, project: str) -> None:
         print(f"[run] subtask {st['id']}: {goal}")
 
         if check.strip().startswith("MANUAL:"):
-            print(f"[run] subtask {st['id']} has no runnable check ({check}). "
-                  "Stopping for a human — the driver will not auto-pass an "
-                  "unverifiable stage.", file=sys.stderr)
+            print(
+                f"[run] subtask {st['id']} has no runnable check ({check}). "
+                "Stopping for a human — the driver will not auto-pass an "
+                "unverifiable stage.",
+                file=sys.stderr,
+            )
             sys.exit(3)
 
         t0 = time.time()
         # Stage runs under the generic guard (agent changed something + coherent +
         # repo tests). Sequential by default; parallel only for file-disjoint
         # `parallelizable` stages (batch runner + Herdr `wait` — kept sequential).
-        guard_ok = run(["uv", "run", str(FAILUP), "--task", goal,
-                        "--project", project], cwd=project, timeout=3600).returncode == 0
+        guard_ok = (
+            run(
+                ["uv", "run", str(FAILUP), "--task", goal, "--project", project],
+                cwd=project,
+                timeout=3600,
+            ).returncode
+            == 0
+        )
 
         # THE per-subtask acceptance gate — deterministic, outside the model. The
         # planner proposed this command; you vetted it at the approval gate; a
@@ -167,24 +184,37 @@ def do_run(plan_path: str, project: str) -> None:
         accept_ok = guard_ok and run(check, cwd=project, shell=True).returncode == 0
 
         with log.open("a") as f:
-            f.write(json.dumps({
-                "ts": datetime.now(UTC).isoformat(), "id": st["id"],
-                "guard_ok": guard_ok, "accept_ok": accept_ok,
-                "seconds": round(time.time() - t0, 1),
-            }) + "\n")
+            f.write(
+                json.dumps(
+                    {
+                        "ts": datetime.now(UTC).isoformat(),
+                        "id": st["id"],
+                        "guard_ok": guard_ok,
+                        "accept_ok": accept_ok,
+                        "seconds": round(time.time() - t0, 1),
+                    }
+                )
+                + "\n"
+            )
 
         if not accept_ok:
             why = "failed its acceptance_check" if guard_ok else "failed the guard"
-            print(f"[run] subtask {st['id']} {why}. Stopping; inspect before "
-                  "continuing.", file=sys.stderr)
+            print(
+                f"[run] subtask {st['id']} {why}. Stopping; inspect before "
+                "continuing.",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
     # Seam verification — the plan's own integration_check, not a hardcoded suite.
     print("[run] all stages passed their acceptance checks. Running integration check.")
     if run(plan["integration_check"], cwd=project, shell=True).returncode != 0:
-        print("[run] INTEGRATION CHECK FAILED. Stages passed individually but "
-              "disagree at a seam. Identify the implicated stage and re-run it, "
-              "or re-plan (which re-enters the human gate).", file=sys.stderr)
+        print(
+            "[run] INTEGRATION CHECK FAILED. Stages passed individually but "
+            "disagree at a seam. Identify the implicated stage and re-run it, "
+            "or re-plan (which re-enters the human gate).",
+            file=sys.stderr,
+        )
         sys.exit(2)
     print("[run] integration check green. Large task complete.")
 

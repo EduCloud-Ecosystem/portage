@@ -25,6 +25,7 @@ OBSERVATIONAL — parsed from pane output and from what you mark by hand. It is 
 good-enough signal for "stop typing into the exhausted lane," not an accounting
 system.
 """
+
 import json
 import os
 import subprocess
@@ -37,32 +38,63 @@ from pathlib import Path
 HERDR = os.environ.get("HERDR_BIN_PATH", "herdr")
 STATE = Path(os.environ.get("HERDR_PLUGIN_STATE_DIR", ".")) / "meters-state.json"
 CONFIG = Path(os.environ.get("HERDR_PLUGIN_CONFIG_DIR", ".")) / "meters.json"
-COOLDOWN_S = 3 * 3600          # assume ~a window; you can re-mark sooner
+COOLDOWN_S = 3 * 3600  # assume ~a window; you can re-mark sooner
 
 # Shipped defaults; copy to $HERDR_PLUGIN_CONFIG_DIR/meters.json to customize.
 DEFAULT_METERS = [
-    {"name": "local", "kind": "pane", "cmd": "ollama run qwen2.5-coder:32b",
-     "cost": "free", "classes": ["bulk", "private", "offline"], "priority": 1},
-    {"name": "codex", "kind": "pane", "cmd": "codex",
-     "cost": "subscription", "classes": ["code", "quick"], "priority": 2},
-    {"name": "claude", "kind": "pane", "cmd": "claude",
-     "cost": "subscription", "classes": ["code", "deep", "judgment"],
-     "priority": 3, "scarce": True},
-    {"name": "perplexity", "kind": "app",
-     "url": "https://www.perplexity.ai/search?q={q}",
-     "cost": "subscription", "classes": ["research"], "priority": 1},
+    {
+        "name": "local",
+        "kind": "pane",
+        "cmd": "ollama run qwen2.5-coder:32b",
+        "cost": "free",
+        "classes": ["bulk", "private", "offline"],
+        "priority": 1,
+    },
+    {
+        "name": "codex",
+        "kind": "pane",
+        "cmd": "codex",
+        "cost": "subscription",
+        "classes": ["code", "quick"],
+        "priority": 2,
+    },
+    {
+        "name": "claude",
+        "kind": "pane",
+        "cmd": "claude",
+        "cost": "subscription",
+        "classes": ["code", "deep", "judgment"],
+        "priority": 3,
+        "scarce": True,
+    },
+    {
+        "name": "perplexity",
+        "kind": "app",
+        "url": "https://www.perplexity.ai/search?q={q}",
+        "cost": "subscription",
+        "classes": ["research"],
+        "priority": 1,
+    },
 ]
 
 # Substrings that suggest a lane is spent. Cheap, and deliberately conservative.
-EXHAUSTED_HINTS = ("rate limit", "usage limit", "limit reached", "try again at",
-                   "resets at", "out of credit", "quota exceeded", "429")
+EXHAUSTED_HINTS = (
+    "rate limit",
+    "usage limit",
+    "limit reached",
+    "try again at",
+    "resets at",
+    "out of credit",
+    "quota exceeded",
+    "429",
+)
 
 
 # ---------- herdr plumbing ----------
 
+
 def herdr(*args, check=False):
-    return subprocess.run([HERDR, *args], capture_output=True, text=True,
-                          check=check)
+    return subprocess.run([HERDR, *args], capture_output=True, text=True, check=check)
 
 
 def panes() -> list[dict]:
@@ -97,6 +129,7 @@ def find_pane(meter: dict, inv: list[dict]) -> str | None:
 
 
 # ---------- state ----------
+
 
 def meters() -> list[dict]:
     if CONFIG.is_file():
@@ -138,13 +171,17 @@ def survey() -> list[dict]:
             tail = pane_text(row["pane"]).lower()[-4000:]
             auto = any(h in tail for h in EXHAUSTED_HINTS)
         row["looks_spent"] = auto
-        row["available"] = (row["cooldown"] == 0 and not auto
-                            and (row["pane"] is not None or m["kind"] == "app"))
+        row["available"] = (
+            row["cooldown"] == 0
+            and not auto
+            and (row["pane"] is not None or m["kind"] == "app")
+        )
         out.append(row)
     return out
 
 
 # ---------- commands ----------
+
 
 def board(_=None):
     rows = survey()
@@ -162,10 +199,14 @@ def board(_=None):
         else:
             st = "available"
         star = "*" if r.get("scarce") else " "
-        print(f"{star}{r['name']:<11}{r['cost']:<14}{str(r['pane'] or '-'):<8}"
-              f"{st:<22}{','.join(r['classes'])}")
-    print("\n* scarce — spend deliberately."
-          "\nAvailability is observational (pane output + your marks), not an API.")
+        print(
+            f"{star}{r['name']:<11}{r['cost']:<14}{str(r['pane'] or '-'):<8}"
+            f"{st:<22}{','.join(r['classes'])}"
+        )
+    print(
+        "\n* scarce — spend deliberately."
+        "\nAvailability is observational (pane output + your marks), not an API."
+    )
 
 
 def picker(_=None):
@@ -193,11 +234,19 @@ def picker(_=None):
 
 
 def best_for(cls: str) -> dict | None:
-    cands = [r for r in survey()
-             if cls in r["classes"] and r["available"] and r["kind"] == "pane"]
+    cands = [
+        r
+        for r in survey()
+        if cls in r["classes"] and r["available"] and r["kind"] == "pane"
+    ]
     # free before metered; scarce last
-    cands.sort(key=lambda r: (0 if r["cost"] == "free" else 1,
-                              1 if r.get("scarce") else 0, r["priority"]))
+    cands.sort(
+        key=lambda r: (
+            0 if r["cost"] == "free" else 1,
+            1 if r.get("scarce") else 0,
+            r["priority"],
+        )
+    )
     return cands[0] if cands else None
 
 
@@ -205,8 +254,12 @@ def classify_task(task: str) -> dict | None:
     """Free local triage + routing. Advisory: the guard is still the real check."""
     root = Path(os.environ.get("HERDR_PLUGIN_ROOT", Path(__file__).parent))
     try:
-        r = subprocess.run([sys.executable, str(root / "classify.py"), task],
-                           capture_output=True, text=True, timeout=90)
+        r = subprocess.run(
+            [sys.executable, str(root / "classify.py"), task],
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
         return json.loads(r.stdout)
     except Exception:
         return None
@@ -244,8 +297,10 @@ def dispatch(_=None):
     # 2. ROUTE — show the decision; never route silently.
     scarce = "  ** SCARCE" if d.get("scarce") else ""
     effort = f" effort={d['effort']}" if d.get("effort") else ""
-    print(f"[meters] {d['provider']}/{d['model']}{effort}{scarce}\n"
-          f"         {d['why']}  (conf {d['confidence']}, via {d['source']})")
+    print(
+        f"[meters] {d['provider']}/{d['model']}{effort}{scarce}\n"
+        f"         {d['why']}  (conf {d['confidence']}, via {d['source']})"
+    )
 
     if d["provider"] == "perplexity":
         research_query(d["shaped"])
@@ -283,8 +338,10 @@ def mark(_=None):
     s = state()
     s.setdefault(hit["name"], {})["cooldown_until"] = time.time() + COOLDOWN_S
     save_state(s)
-    print(f"[meters] {hit['name']} marked rate-limited for {COOLDOWN_S // 3600}h. "
-          "Dispatch will route around it.")
+    print(
+        f"[meters] {hit['name']} marked rate-limited for {COOLDOWN_S // 3600}h. "
+        "Dispatch will route around it."
+    )
 
 
 def log_use(meter: str, kind: str, task: str = "") -> None:
@@ -296,12 +353,19 @@ def log_use(meter: str, kind: str, task: str = "") -> None:
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
         with p.open("a") as f:
-            f.write(json.dumps({
-                "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-                "meter": meter, "kind": kind, "chars": len(task),
-            }) + "\n")
+            f.write(
+                json.dumps(
+                    {
+                        "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                        "meter": meter,
+                        "kind": kind,
+                        "chars": len(task),
+                    }
+                )
+                + "\n"
+            )
     except Exception:
-        pass          # logging must never break dispatch
+        pass  # logging must never break dispatch
 
 
 def loguse(_=None):
@@ -319,8 +383,10 @@ def research_query(q: str):
     m = next(x for x in meters() if x["name"] == "perplexity")
     log_use("perplexity", "research", q)
     webbrowser.open(m["url"].format(q=urllib.parse.quote(q)))
-    print("[meters] opened Perplexity. Switch to Deep Research — it's the "
-          "Opus-powered path and costs no Claude quota.")
+    print(
+        "[meters] opened Perplexity. Switch to Deep Research — it's the "
+        "Opus-powered path and costs no Claude quota."
+    )
 
 
 def research(_=None):
@@ -334,8 +400,14 @@ def research(_=None):
     research_query(q)
 
 
-CMDS = {"board": board, "picker": picker, "dispatch": dispatch,
-        "mark": mark, "research": research, "loguse": loguse}
+CMDS = {
+    "board": board,
+    "picker": picker,
+    "dispatch": dispatch,
+    "mark": mark,
+    "research": research,
+    "loguse": loguse,
+}
 
 if __name__ == "__main__":
     CMDS.get(sys.argv[1] if len(sys.argv) > 1 else "board", board)()

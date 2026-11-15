@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Stand-in test gate for failup.py tests: pass iff marker.txt reads PASS."""
+
 import pathlib
 import sys
 

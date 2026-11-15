@@ -129,23 +129,6 @@ model_list:
     benchmark_version: null
     bfclv3: null
     ifeval: null
-- model_name: proprietary_code
-  litellm_params:
-    model: anthropic/claude-sonnet-5
-    api_key: os.environ/ANTHROPIC_API_KEY
-  model_info:
-    portage_alias: proprietary_code
-    enabled: false
-    open_weight: false
-    license: Proprietary
-    license_family: proprietary
-    max_context: 200000
-    supports_tools: true
-    supports_json: true
-    data_classification: public
-    benchmark_version: null
-    bfclv3: null
-    ifeval: null
 - model_name: proprietary_research
   litellm_params:
     model: perplexity/sonar-deep-research

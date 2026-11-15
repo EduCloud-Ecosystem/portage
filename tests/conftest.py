@@ -4,6 +4,7 @@ src/portage/failup.py and src/portage/plan.py are single-file `uv run --script`
 utilities, not a package, so they're loaded by path rather than imported
 normally.
 """
+
 import importlib.util
 import subprocess
 import sys

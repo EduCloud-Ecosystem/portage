@@ -28,6 +28,7 @@ to two attempts before the ladder escalates, and a retry's prompt carries the
 prior attempt's structured verdict (`_retry_feedback()`) so the SAME stage sees
 what it got wrong, rather than the retry being a blind repeat.
 """
+
 import argparse
 import importlib.util
 import json
@@ -59,8 +60,11 @@ def load_tiers(project: str, tiers_file: str) -> list[dict]:
     path = Path(tiers_file)
     if not path.is_absolute():
         path = Path(project) / tiers_file
-    raw = (json.loads(path.read_text(encoding="utf-8")) if path.is_file()
-           else ["sonnet", "opus"])
+    raw = (
+        json.loads(path.read_text(encoding="utf-8"))
+        if path.is_file()
+        else ["sonnet", "opus"]
+    )
     if isinstance(raw, dict):
         raw = raw["tiers"]
     tiers = []
@@ -101,9 +105,18 @@ def git(project, *args):
 # holds the runner's own transcript, can. SPEC.md §2.1 quotes the comment above
 # verbatim as the rationale, so keep the two in sync if you ever edit it.
 AVAILABILITY_MARKERS = (
-    "429", "503", "502", "connection refused", "connect refused",
-    "rate limit", "overloaded", "econnrefused", "connection reset",
-    "service unavailable", "apiconnectionerror", "temporarily unavailable",
+    "429",
+    "503",
+    "502",
+    "connection refused",
+    "connect refused",
+    "rate limit",
+    "overloaded",
+    "econnrefused",
+    "connection reset",
+    "service unavailable",
+    "apiconnectionerror",
+    "temporarily unavailable",
 )
 
 
@@ -116,8 +129,12 @@ def runner_availability_failure(proc: subprocess.CompletedProcess) -> str | None
     return None
 
 
-_EMPTY_USAGE = {"tokens_in": None, "tokens_out": None,
-                "cache_read_tokens": None, "cost_usd": None}
+_EMPTY_USAGE = {
+    "tokens_in": None,
+    "tokens_out": None,
+    "cache_read_tokens": None,
+    "cost_usd": None,
+}
 
 
 def _runner_usage(proc: subprocess.CompletedProcess) -> dict:
@@ -261,16 +278,85 @@ def _retry_feedback(task: str, category: str, verdict: dict | None) -> str:
     if category != "capability" or not verdict:
         return task
     checks = ", ".join(
-        f"{e['check']}={e['status']}" for e in verdict.get("evidence", [])
+        f"{e['check']}={e['status']}"
+        for e in verdict.get("evidence", [])
         if e.get("status") not in (None, "not_configured")
     )
-    return (f"{task}\n\n[failup retry] the previous attempt failed: "
-            f"{verdict.get('detail', '')} ({checks}). Fix that specific problem.")
+    return (
+        f"{task}\n\n[failup retry] the previous attempt failed: "
+        f"{verdict.get('detail', '')} ({checks}). Fix that specific problem."
+    )
 
 
-def run_ladder(task: str, project: str, tiers_file: str, runner: str,
-               max_tier: int | None = None, start_tier: int = 0,
-               gate_cmds=None) -> int:
+# ── CC-P13: classification-informed ENTRY rung ───────────────────────────────
+# specs/13 §4.2: classification decides WHERE TO START; verification still
+# decides WHETHER IT WORKED. This function picks run_ladder()'s start_tier;
+# the ladder below it is unchanged, so a wrong guess costs one failed attempt
+# and escalates — it never reduces verification (the CC-P13 constraint, tested
+# in test_failup.py::test_entry_tier_failure_still_escalates_like_floor).
+#
+# The T1 classifier (Gemma 4 E4B, the `classifier` alias in the registry) has
+# NO call site in this engine: triage is heuristic by design (see this
+# module's docstring — "you don't need a sophisticated classifier... the guard
+# catches the misses"). The default path below is therefore a conservative
+# task-size heuristic, and `classifier=` is the documented drop-in point for a
+# model-based classifier. Failure discipline mirrors
+# runner_availability_failure(): an unreachable or malformed classifier, or
+# any exception, falls back to start_tier=0 — never a crash, never a
+# verification skip.
+ENTRY_RUNG_LONG_TASK_CHARS = 4000
+ENTRY_RUNG_LONG_CONTEXT_MARKERS = (
+    "entire codebase",
+    "long-context",
+    "whole repository",
+    "migration across",
+)
+
+
+def select_entry_tier(
+    task: str,
+    tiers: list[dict],
+    *,
+    classifier=None,
+) -> int:
+    """The entry rung index for `task` into the loaded `tiers` list.
+
+    Only ever picks WHERE the ladder starts; it cannot change what happens
+    after (retry-then-escalate, deterministic gate). Every failure mode —
+    classifier raising, malformed output, an out-of-range pick — degrades to
+    the floor (0), the same "unavailable, not evidence about capability"
+    posture as runner_availability_failure().
+    """
+    if classifier is not None:
+        try:
+            pick = classifier(task)
+        except Exception:
+            return 0
+        if isinstance(pick, int) and 0 <= pick < len(tiers):
+            return pick
+        return 0
+    try:
+        if len(tiers) <= 1:
+            return 0
+        text = task or ""
+        if len(text) > ENTRY_RUNG_LONG_TASK_CHARS:
+            return min(1, len(tiers) - 1)
+        if any(m in text.lower() for m in ENTRY_RUNG_LONG_CONTEXT_MARKERS):
+            return min(1, len(tiers) - 1)
+        return 0
+    except Exception:
+        return 0
+
+
+def run_ladder(
+    task: str,
+    project: str,
+    tiers_file: str,
+    runner: str,
+    max_tier: int | None = None,
+    start_tier: int = 0,
+    gate_cmds=None,
+) -> int:
     """The escalation loop. Returns the process exit code (0 clean pass, 1
     otherwise) rather than calling sys.exit directly, so tests can call this
     and inspect the result without spawning a subprocess."""
@@ -278,7 +364,7 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
     top = len(TIERS) - 1
     ceiling = top if max_tier is None else min(max_tier, top)
 
-    run_id = uuid.uuid4().hex[:8]        # groups this task's escalation attempts
+    run_id = uuid.uuid4().hex[:8]  # groups this task's escalation attempts
     log = Path(project) / ".claude" / "state" / "failup-log.jsonl"
     log.parent.mkdir(parents=True, exist_ok=True)
     # INVARIANT: `.claude/state/` must stay in the project's .gitignore. On
@@ -289,8 +375,10 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
     # reproduces the failure when the ignore entry is missing.
 
     if git(project, "status", "--porcelain").stdout.strip():
-        print("[failup] warning: working tree is dirty at start; commit or stash first",
-              file=sys.stderr)
+        print(
+            "[failup] warning: working tree is dirty at start; commit or stash first",
+            file=sys.stderr,
+        )
     base = git(project, "rev-parse", "HEAD").stdout.strip()
 
     fc = failure_classes()
@@ -318,8 +406,13 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
             #            NOT an error: the CLI warns and silently uses default effort,
             #            so a typo would quietly flatten the ladder. Tiers that want
             #            default effort must set effort to null, which omits the flag.
-            cmd = runner.split() + [attempt_task, "--model", model,
-                                    "--output-format", "json"]
+            cmd = runner.split() + [
+                attempt_task,
+                "--model",
+                model,
+                "--output-format",
+                "json",
+            ]
             if effort:
                 cmd += ["--effort", effort]
             try:
@@ -340,7 +433,11 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
                 # says "no verifier judged this", which is exactly the fact
                 # `category` also carries.
                 ok, reason, reason_code, category = (
-                    False, avail_reason, None, "availability")
+                    False,
+                    avail_reason,
+                    None,
+                    "availability",
+                )
             else:
                 # By the time we get here the availability case is already filtered
                 # out, so an empty change set IS a capability verdict (SPEC.md §2.1).
@@ -353,32 +450,46 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
                 category = "ok" if ok else "capability"
 
             with log.open("a") as f:
-                f.write(json.dumps({
-                    "ts": datetime.now(UTC).isoformat(), "run_id": run_id,
-                    "task": task,                # needed for distillation (docs/specs/09)
-                    "tier": tier, "model": model, "effort": effort,
-                    "attempt_in_tier": attempt,  # 0-indexed; HB-2 retry cap
-                    # BOTH, not one. `reason` is the legacy string this log has
-                    # carried since before the contract existed and is what keeps
-                    # month-old records meaning what they said. `reason_code` is the
-                    # registry-governed code, verbatim from the verdict document,
-                    # and is what a new consumer should branch on: the registry is
-                    # append-only (SPEC.md §7.2), whereas a free-text reason can be
-                    # reworded invisibly to someone reading last month's logs.
-                    "ok": ok, "reason": reason, "reason_code": reason_code,
-                    "category": category,
-                    "seconds": round(time.time() - t0, 1),
-                    # HB-2b: best-effort, null when unavailable — see
-                    # _runner_usage()'s docstring for what these mean per rung.
-                    **usage,
-                }) + "\n")
+                f.write(
+                    json.dumps(
+                        {
+                            "ts": datetime.now(UTC).isoformat(),
+                            "run_id": run_id,
+                            "task": task,  # needed for distillation (docs/specs/09)
+                            "tier": tier,
+                            "model": model,
+                            "effort": effort,
+                            "attempt_in_tier": attempt,  # 0-indexed; HB-2 retry cap
+                            # BOTH, not one. `reason` is the legacy string this
+                            # log has carried since before the contract existed and
+                            # is what keeps month-old records meaning what they
+                            # said. `reason_code` is the registry-governed code,
+                            # verbatim from the verdict document, and is what a new
+                            # consumer should branch on: the registry is append-only
+                            # (SPEC.md §7.2), whereas a free-text reason can be
+                            # reworded invisibly to someone reading last month's logs.
+                            "ok": ok,
+                            "reason": reason,
+                            "reason_code": reason_code,
+                            "category": category,
+                            "seconds": round(time.time() - t0, 1),
+                            # HB-2b: best-effort, null when unavailable — see
+                            # _runner_usage()'s docstring for what these mean per rung.
+                            **usage,
+                        }
+                    )
+                    + "\n"
+                )
 
             if ok:
                 print(f"[failup] clean pass at tier {tier} ({model}, effort={effort})")
                 return 0
 
-            print(f"[failup] tier {tier} ({model}) attempt {attempt} failed "
-                  f"({category}): {reason}", file=sys.stderr)
+            print(
+                f"[failup] tier {tier} ({model}) attempt {attempt} failed "
+                f"({category}): {reason}",
+                file=sys.stderr,
+            )
 
             last_attempt = attempt == fc.MAX_ATTEMPTS_PER_TIER - 1
             if last_attempt and tier == ceiling:
@@ -386,19 +497,26 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
                 break
 
             # park the failed attempt (recoverable), reset clean
-            git(project, "stash", "push", "-u", "-m",
-                f"failup-t{tier}a{attempt}-{reason}")
+            git(
+                project, "stash", "push", "-u", "-m", f"failup-t{tier}a{attempt}-{reason}"
+            )
             git(project, "reset", "--hard", base)
 
             if not last_attempt:
-                print(f"[failup] retrying tier {tier} ({model}) once more before "
-                      "escalating", file=sys.stderr)
+                print(
+                    f"[failup] retrying tier {tier} ({model}) once more before "
+                    "escalating",
+                    file=sys.stderr,
+                )
                 prev_category, prev_verdict = category, verdict
 
     capped = max_tier is not None and ceiling < len(TIERS) - 1
-    msg = ("budget ceiling reached (quota-capped below the top tier); STOPPED for a "
-           "human — did not spend scarce Opus quota" if capped
-           else "top tier reached without a clean pass; attempt left in tree for review")
+    msg = (
+        "budget ceiling reached (quota-capped below the top tier); STOPPED for a "
+        "human — did not spend scarce Opus quota"
+        if capped
+        else "top tier reached without a clean pass; attempt left in tree for review"
+    )
     print(f"[failup] {msg}", file=sys.stderr)
     return 1
 
@@ -406,23 +524,54 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", required=True, help="prompt for the automated run")
-    ap.add_argument("--start-tier", type=int, default=0)
+    ap.add_argument(
+        "--start-tier",
+        type=int,
+        default=None,
+        help="entry rung index. Default: select_entry_tier() — a conservative "
+        "task-size heuristic, or a classifier if one is wired. Explicit "
+        "--start-tier 0 forces the floor (the pre-CC-P13 behavior).",
+    )
     ap.add_argument("--project", default=os.getcwd())
-    ap.add_argument("--tiers", default=DEFAULT_TIERS_FILE,
-                    help="JSON file: ordered list of model strings or {model,effort}")
-    ap.add_argument("--runner", default="claude -p",
-                    help="agent invocation. Native `claude -p` draws the Max wallet "
-                         "directly (Claude-5x pilot) or, with ANTHROPIC_BASE_URL/ "
-                         "ANTHROPIC_AUTH_TOKEN pointed at LiteLLM, routes through the "
-                         "proxy instead — same binary either way (see "
-                         "docs/phase-1-findings.md). No shim is needed for either path.")
-    ap.add_argument("--max-tier", type=int, default=None,
-                    help="budget-pressure ceiling: never escalate above this tier "
-                         "index. If the capped tier fails, STOP and flag a human "
-                         "rather than spend scarce Opus quota.")
+    ap.add_argument(
+        "--tiers",
+        default=DEFAULT_TIERS_FILE,
+        help="JSON file: ordered list of model strings or {model,effort}",
+    )
+    ap.add_argument(
+        "--runner",
+        default="claude -p",
+        help="agent invocation. Native `claude -p` draws the Max wallet "
+        "directly (Claude-5x pilot) or, with ANTHROPIC_BASE_URL/ "
+        "ANTHROPIC_AUTH_TOKEN pointed at LiteLLM, routes through the "
+        "proxy instead — same binary either way (see "
+        "docs/phase-1-findings.md). No shim is needed for either path.",
+    )
+    ap.add_argument(
+        "--max-tier",
+        type=int,
+        default=None,
+        help="budget-pressure ceiling: never escalate above this tier "
+        "index. If the capped tier fails, STOP and flag a human "
+        "rather than spend scarce Opus quota.",
+    )
     args = ap.parse_args()
-    sys.exit(run_ladder(args.task, args.project, args.tiers, args.runner,
-                        max_tier=args.max_tier, start_tier=args.start_tier))
+    if args.start_tier is None:
+        # CC-P13: classification-informed entry is the DEFAULT; an explicit
+        # --start-tier (plan.py's CLI path included) still wins unchanged.
+        args.start_tier = select_entry_tier(
+            args.task, load_tiers(args.project, args.tiers)
+        )
+    sys.exit(
+        run_ladder(
+            args.task,
+            args.project,
+            args.tiers,
+            args.runner,
+            max_tier=args.max_tier,
+            start_tier=args.start_tier,
+        )
+    )
 
 
 if __name__ == "__main__":
