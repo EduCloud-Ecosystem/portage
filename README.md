@@ -3,7 +3,7 @@
 
 <!-- educloud-status-badges:start -->
 [![License](https://img.shields.io/github/license/EduCloud-Ecosystem/portage)](https://github.com/EduCloud-Ecosystem/portage/blob/main/LICENSING.md)
-[![CI and tests](https://github.com/EduCloud-Ecosystem/portage/actions/workflows/portage-ci.yml/badge.svg?branch=main)](https://github.com/EduCloud-Ecosystem/portage/actions/workflows/portage-ci.yml)
+[![PR tests](https://github.com/EduCloud-Ecosystem/portage/actions/workflows/portage-ci.yml/badge.svg?event=pull_request)](https://github.com/EduCloud-Ecosystem/portage/actions/workflows/portage-ci.yml)
 [![Open issues](https://img.shields.io/github/issues/EduCloud-Ecosystem/portage)](https://github.com/EduCloud-Ecosystem/portage/issues)
 <!-- educloud-status-badges:end -->
 
