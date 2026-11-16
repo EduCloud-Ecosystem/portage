@@ -599,9 +599,10 @@ class Handler(BaseHTTPRequestHandler):
             )
             # Secret-service refusal is pre-admission: no provider request or
             # reservation. Retrieval never replaces membership/deadline checks.
+            credential_source = getattr(self.server, "credential_source", None)
             inference_key = (
-                self.server.credential_source()
-                if self.server.credential_source is not None
+                credential_source()
+                if credential_source is not None
                 else self.server.inference_key
             )
             # Body receipt may block. Recheck the current authority immediately
