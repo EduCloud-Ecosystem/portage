@@ -362,7 +362,19 @@ class Gateway(ThreadingHTTPServer):
         qualification_guard=None,
         shadow_decider=None,
         external_guard=None,
+        credential_source=None,
     ):
+        if credential_source is not None:
+            from openbao_credentials import OpenBaoCredential
+
+            if (
+                not isinstance(credential_source, OpenBaoCredential)
+                or address[0] != "127.0.0.1"
+                or manifest["mode"] not in {"synthetic", "external-smoke"}
+                or inference_key
+            ):
+                raise ValueError("credential trial requires loopback and no fallback key")
+        self.credential_source = credential_source
         if manifest["mode"] == "external-smoke":
             validate_external_manifest(manifest)
             if not isinstance(external_guard, SmokeGuard) or address[0] != "127.0.0.1":
@@ -585,6 +597,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.manifest["models"],
                 self.path[4:],
             )
+            # Secret-service refusal is pre-admission: no provider request or
+            # reservation. Retrieval never replaces membership/deadline checks.
+            inference_key = (
+                self.server.credential_source()
+                if self.server.credential_source is not None
+                else self.server.inference_key
+            )
             # Body receipt may block. Recheck the current authority immediately
             # before admission; the ledger then rechecks local revocation atomically.
             token, asserted, project, member = self.identity()
@@ -641,7 +660,7 @@ class Handler(BaseHTTPRequestHandler):
                 data=json.dumps(body).encode(),
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": "Bearer " + self.server.inference_key,
+                    "Authorization": "Bearer " + inference_key,
                     "X-Portage-Request-Id": admitted,
                 },
             )
