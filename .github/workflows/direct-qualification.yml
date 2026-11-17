@@ -4,6 +4,8 @@ on:
     paths:
       - integrations/ai_pilot/**
       - src/portage/pilot_ledger.py
+      - src/portage/openbao_credentials.py
+      - tests/test_openbao*.py
       - src/portage/qualification_guard.py
       - tests/test_pilot_*.py
       - tests/test_direct_qualification.py

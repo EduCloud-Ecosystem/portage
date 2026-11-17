@@ -6,7 +6,8 @@
   "pilot_role": "Required for governed live model calls",
   "required_workflows": [
     "portage-ci.yml",
-    "direct-qualification.yml"
+    "direct-qualification.yml",
+    "openbao-controls.yml"
   ],
   "local_verification": "uv run pytest -q; retain generated profile re-render checks in portage-ci.yml.",
   "integration_verification": "Run Belay-classroom consumer controls, real transport retry/accounting controls; paid endpoint qualification is separately authorized."

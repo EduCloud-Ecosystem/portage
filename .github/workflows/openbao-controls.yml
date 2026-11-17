@@ -1,0 +1,73 @@
+name: OpenBao controls
+on:
+  pull_request:
+    paths:
+      - 'src/portage/openbao_credentials.py'
+      - 'integrations/ai_pilot/**'
+      - 'tests/test_openbao*.py'
+      - 'uv.lock'
+      - '.github/workflows/openbao-controls.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: openbao-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  synthetic-openbao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Deliberately no repository credentials or provider API keys.
+      BAO_ARCHIVE_SHA256: 582b1f3c2fdc5afd443b2d57a225ef654de75adea609fdb66731fd582a9cbc96
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081
+      - name: Install pinned OpenBao 2.7.2
+        run: |
+          set -eu
+          umask 077
+          mkdir -p "$RUNNER_TEMP/bao-bin" "$RUNNER_TEMP/bao-custody"
+          curl --fail --location --max-time 120 \
+            https://github.com/openbao/openbao/releases/download/v2.7.2/openbao_2.7.2_linux_amd64.tar.gz \
+            --output "$RUNNER_TEMP/bao-bin/bao.tar.gz"
+          echo "$BAO_ARCHIVE_SHA256  $RUNNER_TEMP/bao-bin/bao.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/bao-bin/bao.tar.gz" -C "$RUNNER_TEMP/bao-bin" bao
+          "$RUNNER_TEMP/bao-bin/bao" version
+          uv sync --frozen
+      - name: Offline file and admission regressions
+        run: uv run --frozen pytest tests/test_openbao_credentials.py tests/test_openbao_identity.py
+      - name: Real TLS OpenBao transport, rotation and failure controls
+        run: |
+          set -eu
+          mkdir -p .qualification/openbao-ci
+          uv run --frozen python integrations/ai_pilot/openbao_trial.py \
+            --bao "$RUNNER_TEMP/bao-bin/bao" \
+            --output .qualification/openbao-ci/transport --execute-local \
+            > .qualification/openbao-ci/transport.log 2>&1
+      - name: Real service identity and independent recovery controls
+        if: ${{ !cancelled() }}
+        run: |
+          set -eu
+          mkdir -p .qualification/openbao-ci
+          uv run --frozen python integrations/ai_pilot/openbao_identity_trial.py \
+            --bao "$RUNNER_TEMP/bao-bin/bao" \
+            --output .qualification/openbao-ci/identity \
+            --custody-file "$RUNNER_TEMP/bao-custody/recovery.json" --execute-local \
+            > .qualification/openbao-ci/identity.log 2>&1
+      - name: Retain control outcomes and failure traces only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: openbao-control-outcomes
+          retention-days: 14
+          if-no-files-found: warn
+          include-hidden-files: true
+          # Never publish custody files, service tokens, TLS keys or Bao storage.
+          path: |
+            .qualification/openbao-ci/transport/result.json
+            .qualification/openbao-ci/identity/result.json
+            .qualification/openbao-ci/transport.log
+            .qualification/openbao-ci/identity.log
