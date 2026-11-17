@@ -3,7 +3,9 @@
 
 Only the already-authorized source-fixed instructor question can reach the real
 provider, under the existing seven-transport/$0.175 reservation cap. No raw key
-is passed to the child. Bootstrap, server and tokens are removed/stopped on exit.
+is passed to the child. Bootstrap root is revoked; server and runtime tokens
+are stopped/removed on exit.
+Operator recovery export remains private and outside runtime for password-manager import.
 """
 
 import argparse
@@ -11,9 +13,12 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 from gateway import open_once  # noqa: F401 -- initializes Portage source import path
+from openbao_credentials import OpenBaoCredential
+from openbao_identity import enroll, provision, read_private_json
 from openbao_local import LocalBao, private
 from openrouter_adapter import load_key
 
@@ -30,6 +35,7 @@ def main():
         "kernel-python",
         "kernel-lock",
         "output",
+        "custody-export",
     ):
         parser.add_argument("--" + name, required=True, type=Path)
     for name in ("grader-image", "checkout-image", "waypoint-pin"):
@@ -65,6 +71,31 @@ def main():
         bao.start()
         bao.initialize()
         bao.put(key)
+        provision(bao, args.custody_export)
+        binding = output / "service-binding.json"
+        # Recovery custody is consumed by a separate operator process, never the
+        # browser, kernel, Belay or Portage service. No root survives bootstrap.
+        subprocess.run(
+            [
+                sys.executable,
+                str(Path(__file__).with_name("openbao_identity.py")),
+                "--custody-file",
+                str(args.custody_export),
+                "--binding-file",
+                str(binding),
+            ],
+            check=True,
+            timeout=60,
+            stdout=subprocess.DEVNULL,
+            env={"PATH": os.environ["PATH"], "LANG": "C"},
+        )
+        report["service_identity"] = enroll(bao, binding)
+        report["bootstrap_root_revoked"] = bao.root_token is None
+        report["custody"] = {
+            "destination": "institutional-password-manager-plus-separate-backup",
+            "import_confirmed": False,
+            "staging_outside_runtime": True,
+        }
         command = [
             str(args.driver),
             str(args.waypoint / "course-workspace/rehearsal/nhanes_desktop.py"),
@@ -133,10 +164,56 @@ def main():
         assert len(reads) == workflow["model_transports"]
         report["bao_credential_reads"] = len(reads)
         report["openbao_binary_sha256"] = bao.binary_sha256
+        # Recover the actual post-workflow store with a fresh operator process.
+        # Keep the accounting database independent and never replay paid work.
+        ledger_path = output / "workflow/tutoring/provider/portage.sqlite"
+        ledger_before = hashlib.sha256(ledger_path.read_bytes()).hexdigest()
+        retired_token = bao.token_file.read_text()
+        bao.stop()
+        backup = bao.backup()
+        bao.restore(backup)
+        bao.start()
+        subprocess.run(
+            [
+                sys.executable,
+                str(Path(__file__).with_name("openbao_identity.py")),
+                "--custody-file",
+                str(args.custody_export),
+                "--binding-file",
+                str(binding),
+                "--recover",
+            ],
+            check=True,
+            timeout=60,
+            stdout=subprocess.DEVNULL,
+            env={"PATH": os.environ["PATH"], "LANG": "C"},
+        )
+        assert (
+            bao.request("GET", "secret/data/portage/provider", token=retired_token)[0]
+            == 403
+        )
+        enroll(bao, binding)
+        assert OpenBaoCredential(bao.address, bao.ca, bao.token_file)() == key
+        assert hashlib.sha256(ledger_path.read_bytes()).hexdigest() == ledger_before
+        report["post_workflow_recovery"] = {
+            "fresh_operator_process": True,
+            "restored_token_refused": True,
+            "provider_credential_verified_without_inference": True,
+            "independent_ledger_sha256": ledger_before,
+            "extra_model_transports": 0,
+            "credential_reads": {"denied_retired_token": 1, "successful_recovery": 1},
+        }
         report["audit_sha256"] = hashlib.sha256(bao.audit.read_bytes()).hexdigest()
         # Evidence lives in a private output tree. Check every regular file, not
         # just stdout, before permitting any sanitized report to be published.
-        sensitive = (key.encode(), bao.token_file.read_bytes(), bao.root_token.encode())
+        custody = read_private_json(args.custody_export)
+        sensitive = (
+            key.encode(),
+            bao.token_file.read_bytes(),
+            retired_token.encode(),
+            custody["unseal_key"].encode(),
+            custody["operator_password"].encode(),
+        )
         leaks = []
         for path in output.rglob("*"):
             if path.is_file() and path != bao.token_file:

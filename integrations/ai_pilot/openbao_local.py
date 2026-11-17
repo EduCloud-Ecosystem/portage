@@ -8,7 +8,9 @@ import os
 import shutil
 import socket
 import ssl
+import stat
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
@@ -18,10 +20,29 @@ SECRET_PATH = "secret/data/portage/provider"
 
 
 def private(path, content):
+    """Atomically replace an owned private regular file, never follow links."""
     path = Path(path)
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
-    with os.fdopen(fd, "w") as out:
-        out.write(content)
+    parent = path.parent.stat()
+    if parent.st_uid != os.getuid() or parent.st_mode & 0o077:
+        raise ValueError("private owned parent directory required")
+    if path.exists() or path.is_symlink():
+        info = path.lstat()
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != os.getuid()
+            or info.st_nlink != 1
+            or info.st_mode & 0o077
+        ):
+            raise ValueError("unsafe existing private file")
+    fd, temporary = tempfile.mkstemp(prefix=".private-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w") as out:
+            out.write(content)
+            out.flush()
+            os.fsync(out.fileno())
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
 
 
 class LocalBao:
@@ -111,7 +132,7 @@ audit "file" "local-trial" {{
         )
         self.context = ssl.create_default_context(cafile=str(self.ca))
 
-    def request(self, method, path, body=None, token=None):
+    def request(self, method, path, body=None, token=None, *, wrap_ttl=None):
         conn = http.client.HTTPSConnection(
             "127.0.0.1", self.port, context=self.context, timeout=30
         )
@@ -123,6 +144,7 @@ audit "file" "local-trial" {{
                 headers={
                     "Content-Type": "application/json",
                     "X-Vault-Token": token or "",
+                    **({"X-Vault-Wrap-TTL": wrap_ttl} if wrap_ttl else {}),
                 },
             )
             response = conn.getresponse()
@@ -226,7 +248,7 @@ audit "file" "local-trial" {{
 
     def backup(self):
         if self.proc is not None:
-            raise ValueError("file backend backup requires a stopped server")
+            raise ValueError("cold Raft backup requires a stopped server")
         target = self.directory / "backup"
         shutil.copytree(self.storage, target)
         return target
